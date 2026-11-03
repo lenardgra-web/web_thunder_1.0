@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thunder Tanks 3D - Singleplayer & Multiplayer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- PeerJS for WebRTC P2P -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            background-color: #050505;
+            color: #ffffff;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+        }
+        /* Dynamic 3D Gun Target Reticle Marker */
+        #dynamic-target-reticle {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #00ff66;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+            box-shadow: 0 0 8px rgba(0, 255, 102, 0.6);
+        }
+        #dynamic-target-reticle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #00ff66;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+        }
+        /* HUD Grid Overlay */
+        .hud-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        /* Custom Scrollbar for room lists/chat */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        .scope-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, transparent 45%, rgba(0,10,0,0.85) 70%, black 98%);
+            pointer-events: none;
+            z-index: 9;
+            display: none;
+        }
+        /* Siatka lunety jest HUD-em przypiętym do ekranu, niezależnym od ruchu lufy. */
+        .scope-reticle-overlay {
+            position: fixed;
+            inset: 0;
+            display: block;
+            pointer-events: none;
+            z-index: 11;
+            overflow: hidden;
+        }
+        .scope-reticle-overlay svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+
+    <!-- Canvas Renderer Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Celownik Centralny (Fixed Screen Crosshair Reticle) -->
+    <div id="crosshair-container" class="crosshair hidden">
+        <svg width="120" height="120" viewBox="0 0 100 100" class="opacity-90">
+            <!-- Central Precision Circle & Dot -->
+            <circle cx="50" cy="50" r="4" fill="none" stroke="#00ff66" stroke-width="1"/>
+            <circle cx="50" cy="50" r="1.5" fill="#00ff66"/>
+            <!-- Outer Gunsight Lines -->
+            <line x1="10" y1="50" x2="35" y2="50" stroke="#00ff66" stroke-width="1.5"/>
+            <line x1="65" y1="50" x2="90" y2="50" stroke="#00ff66" stroke-width="1.5"/>
+            <line x1="50" y1="65" x2="50" y2="90" stroke="#00ff66" stroke-width="1.5"/>
+            <!-- Stadiametric Range Finder Notches -->
+            <line x1="44" y1="58" x2="56" y2="58" stroke="#00ff66" stroke-width="1"/>
+            <line x1="40" y1="64" x2="60" y2="64" stroke="#00ff66" stroke-width="1"/>
+            <line x1="45" y1="70" x2="55" y2="70" stroke="#00ff66" stroke-width="1"/>
+        </svg>
+    </div>
+
+    <!-- Dynamiczny wskaźnik trajektorii lufy w przestrzeni 3D -->
+    <div id="dynamic-target-reticle"></div>
+
+    <!-- Scope Vignette Filter & Military Grid (Sniper View) -->
+    <div id="scope-vignette" class="scope-vignette">
+        <div class="scope-reticle-overlay">
+            <svg aria-hidden="true" style="width:100%;height:100%;display:block;">
+                <line x1="50%" y1="0" x2="50%" y2="calc(50% - 16px)" stroke="#e8f3e2" stroke-width="1" opacity="0.95"/>
+                <line x1="50%" y1="calc(50% + 16px)" x2="50%" y2="100%" stroke="#e8f3e2" stroke-width="1" opacity="0.95"/>
+                <line x1="0" y1="50%" x2="calc(50% - 16px)" y2="50%" stroke="#e8f3e2" stroke-width="1" opacity="0.95"/>
+                <line x1="calc(50% + 16px)" y1="50%" x2="100%" y2="50%" stroke="#e8f3e2" stroke-width="1" opacity="0.95"/>
+                <rect x="calc(50% - 1px)" y="calc(50% - 1px)" width="2" height="2" fill="#e8f3e2"/>
+            </svg>
+        </div>
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 pointer-events-none opacity-80">
+            <div class="text-xs text-green-500 font-mono tracking-widest uppercase bg-black/60 px-4 py-1 rounded border border-green-800">LUNETA 8.0x | APFSDS AP-120</div>
+        </div>
+    </div>
+
+    <!-- MAIN MENU UI -->
+    <div id="main-menu" class="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
+        <div class="max-w-xl w-full mx-4 bg-slate-900/90 border border-slate-700/80 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-12 -top-12 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-500 uppercase">
+                    Thunder Tanks 3D
+                </h1>
+                <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest font-semibold">Symulator Balistyki i Walki Pancernej</p>
+            </div>
+
+            <!-- Player Settings -->
+            <div class="mb-6 space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 uppercase font-semibold mb-1">Nick Gracza</label>
+                    <input type="text" id="player-nickname" value="Czołgista_1" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs text-slate-400 uppercase font-semibold mb-1">Wybór Mapy</label>
+                    <select id="map-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+                        <option value="city">🌆 Miasto (Średnie, Budynki, Ciasne Uliczki)</option>
+                        <option value="desert">🏜️ Pustynia (Ogromna, Wysokie Wydmy)</option>
+                        <option value="hills" selected>⛰️ Pagórki (Rozległa, Strome Zbocza i Drzewa)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Game Mode Buttons -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button id="btn-sp" class="flex flex-col items-center justify-center p-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all transform hover:-translate-y-0.5 shadow-lg shadow-emerald-900/30">
+                    <i class="fa-solid fa-user text-2xl mb-1"></i>
+                    <span>SINGLEPLAYER</span>
+                    <span class="text-[10px] font-normal opacity-80 mt-0.5">Bitwa z Botami AI</span>
+                </button>
+                <button id="btn-mp-tab" class="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl font-bold transition-all transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-users text-2xl mb-1 text-cyan-400"></i>
+                    <span>MULTIPLAYER</span>
+                    <span class="text-[10px] font-normal opacity-80 mt-0.5">P2P PeerJS WebRTC</span>
+                </button>
+            </div>
+
+            <!-- Multiplayer Panel (Hidden by default) -->
+            <div id="mp-panel" class="hidden border-t border-slate-800 pt-6 space-y-4">
+                <div class="flex gap-2">
+                    <button id="btn-create-host" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-lg text-sm font-semibold transition">
+                        Stwórz Pokój (Host)
+                    </button>
+                </div>
+                <div class="relative flex items-center justify-center my-2">
+                    <span class="bg-slate-900 px-3 text-xs text-slate-500 uppercase font-semibold">lub dołącz</span>
+                    <div class="absolute inset-0 flex items-center -z-10"><div class="w-full border-t border-slate-800"></div></div>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="join-peer-id" placeholder="Wklej ID Pokoju Hosta..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-cyan-500">
+                    <button id="btn-join-room" class="bg-slate-700 hover:bg-slate-600 px-5 py-2 rounded-lg text-sm font-semibold transition">
+                        Dołącz
+                    </button>
+                </div>
+                <!-- Status Room info -->
+                <div id="room-status-box" class="hidden bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs font-mono space-y-1">
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span>Twój Peer ID:</span>
+                        <button id="copy-peer-id" class="text-cyan-400 hover:underline">Kopiuj</button>
+                    </div>
+                    <div id="current-peer-id" class="text-white font-bold select-all break-all">---</div>
+                    <div id="connection-status" class="text-amber-400 mt-1">Oczekiwanie na graczy...</div>
+                    <button id="btn-start-mp-game" class="w-full mt-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition hidden">
+                        URUCHOM MECZ MULTIPLAYER
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-6 text-center text-xs text-slate-500">
+                Sterowanie: <span class="text-slate-300 font-semibold">WSAD</span> - Kadłub | <span class="text-slate-300 font-semibold">Myszka</span> - Celownik | <span class="text-slate-300 font-semibold">LPM</span> - Strzał | <span class="text-slate-300 font-semibold">Shift/PPM</span> - Celownik | <span class="text-slate-300 font-semibold">C</span> - Zmiana Kamery
+            </div>
+        </div>
+    </div>
+
+    <!-- IN-GAME HUD OVERLAY -->
+    <div id="hud-container" class="hud-overlay hidden">
+        <!-- Top Team Scores Bar -->
+        <div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-slate-950/80 border border-slate-800/80 backdrop-blur-md px-6 py-2 rounded-full flex items-center gap-8 shadow-xl">
+            <!-- Blue Team -->
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-blue-400">Niebiescy</span>
+                <span id="score-blue" class="text-2xl font-black text-blue-400">0</span>
+            </div>
+            <!-- Timer / VS -->
+            <div class="text-slate-500 font-mono text-sm font-bold uppercase">VS</div>
+            <!-- Red Team -->
+            <div class="flex items-center gap-3">
+                <span id="score-red" class="text-2xl font-black text-red-400">0</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-red-400">Czerwoni</span>
+            </div>
+        </div>
+
+        <!-- Left Bottom: Tank Diagnostics & Speedometer -->
+        <div class="absolute bottom-6 left-6 bg-slate-950/85 border border-slate-800/80 backdrop-blur-md p-4 rounded-xl flex flex-col gap-3 min-w-[220px]">
+            <!-- Dynamic Health Bar -->
+            <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-slate-400 uppercase">Pancerz Kadłuba</span>
+                    <span id="hud-hp-text" class="text-emerald-400">100%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div id="hud-hp-bar" class="bg-emerald-500 h-full w-full transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Reload Indicator -->
+            <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-slate-400 uppercase">Działo 120mm</span>
+                    <span id="hud-reload-text" class="text-emerald-400">GOTOWE</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div id="hud-reload-bar" class="bg-emerald-400 h-full w-full"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-800/60 font-mono">
+                <div>
+                    <span class="text-slate-500">Prędkość:</span>
+                    <span id="hud-speed" class="text-slate-200 font-bold">0 km/h</span>
+                </div>
+                <div>
+                    <span class="text-slate-500">Nachylenie:</span>
+                    <span id="hud-incline" class="text-slate-200 font-bold">0°</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Bottom: Minimap -->
+        <div class="absolute bottom-6 right-6 bg-slate-950/90 border border-slate-800 p-2 rounded-xl shadow-2xl">
+            <canvas id="minimap-canvas" width="160" height="160" class="rounded-lg border border-slate-800"></canvas>
+        </div>
+
+        <!-- Center Notification Center -->
+        <div id="hit-notification" class="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-0 transition-opacity duration-200">
+            <div id="hit-text" class="text-xl font-extrabold uppercase tracking-widest drop-shadow-md text-red-500">TRAFIENIE / RYKOSZET</div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        /* =========================================================================
+           GLOBAL GAME STATE & CONSTANTS
+           ========================================================================= */
+        const GAME_STATE = {
+            mode: 'SP', // 'SP' or 'MP'
+            isHost: true,
+            myPeerId: null,
+            hostPeerId: null,
+            myTeam: 'blue',
+            mapName: 'hills',
+            running: false,
+            playerTank: null,
+            tanks: [],
+            shells: [],
+            obstacles: [],
+            terrainMesh: null,
+            terrainBounds: { minX: -250, maxX: 250, minZ: -250, maxZ: 250 },
+            scores: { blue: 0, red: 0 }
+        };
+
+        const PHYSICS = {
+            gravity: 9.81,
+            maxSlopeAngle: 32, // Slipping threshold in degrees
+            slipGravityFactor: 1.8,
+            shellVelocity: 350, // Base muzzle velocity (m/s equivalent)
+            shellGravity: 12.0
+        };
+
+        /* =========================================================================
+           THREE.JS ENGINE SETUP
+           ========================================================================= */
+        let scene, camera, renderer, clock;
+        let cameraMode = 'TPP'; // 'TPP', 'FPP', 'SCOPE'
+        let mouseX = 0, mouseY = 0;
+        let isPointerLocked = false;
+
+        function initThreeEngine() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.FogExp2(0x87ceeb, 0.002);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            clock = new THREE.Clock();
+
+            // Lighting Setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff5ea, 1.2);
+            sunLight.position.set(150, 200, 100);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 10;
+            sunLight.shadow.camera.far = 600;
+            const d = 200;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /* =========================================================================
+           TERRAIN GENERATION & PROCEDURAL MAPS
+           ========================================================================= */
+        function getTerrainHeight(x, z, mapType) {
+            if (mapType === 'city') {
+                return 0; // Flat asphalt city grid
+            } else if (mapType === 'desert') {
+                // High rolling dunes
+                return Math.sin(x * 0.015) * Math.cos(z * 0.015) * 12 + Math.sin(x * 0.03) * 6;
+            } else if (mapType === 'hills') {
+                // Steep mountain hills & valleys
+                const h1 = Math.sin(x * 0.02) * Math.cos(z * 0.02) * 22;
+                const h2 = Math.sin(x * 0.05 + 1.2) * Math.sin(z * 0.04) * 10;
+                return h1 + h2;
+            }
+            return 0;
+        }
+
+        function getTerrainNormal(x, z, mapType) {
+            const eps = 0.5;
+            const hL = getTerrainHeight(x - eps, z, mapType);
+            const hR = getTerrainHeight(x + eps, z, mapType);
+            const hD = getTerrainHeight(x, z - eps, mapType);
+            const hU = getTerrainHeight(x, z + eps, mapType);
+
+            const normal = new THREE.Vector3(hL - hR, 2 * eps, hD - hU);
+            return normal.normalize();
+        }
+
+        function buildMap(mapType) {
+            // Clear old mesh & obstacles
+            if (GAME_STATE.terrainMesh) scene.remove(GAME_STATE.terrainMesh);
+            GAME_STATE.obstacles.forEach(o => scene.remove(o.mesh));
+            GAME_STATE.obstacles = [];
+
+            const size = 500;
+            const segments = 120;
+            const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+            geometry.rotateX(-Math.PI / 2);
+
+            const posAttr = geometry.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                const x = posAttr.getX(i);
+                const z = posAttr.getZ(i);
+                const h = getTerrainHeight(x, z, mapType);
+                posAttr.setY(i, h);
+            }
+            geometry.computeVertexNormals();
+
+            let terrainMaterial;
+            if (mapType === 'city') {
+                terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x333338, roughness: 0.9, metalness: 0.1 });
+                scene.background = new THREE.Color(0x444455);
+                scene.fog.color.setHex(0x444455);
+            } else if (mapType === 'desert') {
+                terrainMaterial = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.95 });
+                scene.background = new THREE.Color(0xedd8b4);
+                scene.fog.color.setHex(0xedd8b4);
+            } else {
+                terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x4b6e38, roughness: 0.85 });
+                scene.background = new THREE.Color(0x7ec0ee);
+                scene.fog.color.setHex(0x7ec0ee);
+            }
+
+            const terrain = new THREE.Mesh(geometry, terrainMaterial);
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+            GAME_STATE.terrainMesh = terrain;
+
+            // Spawn Environment Details / Obstacles
+            if (mapType === 'city') {
+                buildCityBuildings();
+            } else if (mapType === 'hills') {
+                buildHillsTrees();
+            }
+        }
+
+        function buildCityBuildings() {
+            const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
+            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x666677, roughness: 0.4, metalness: 0.5 });
+            
+            for (let x = -180; x <= 180; x += 45) {
+                for (let z = -180; z <= 180; z += 45) {
+                    if (Math.abs(x) < 30 && Math.abs(z) < 30) continue;
+                    
+                    const w = 20 + Math.random() * 10;
+                    const d = 20 + Math.random() * 10;
+                    const h = 30 + Math.random() * 60;
+
+                    const building = new THREE.Mesh(buildingGeo, buildingMat);
+                    building.scale.set(w, h, d);
+                    building.position.set(x, h / 2, z);
+                    building.castShadow = true;
+                    building.receiveShadow = true;
+                    scene.add(building);
+
+                    GAME_STATE.obstacles.push({
+                        type: 'box',
+                        mesh: building,
+                        min: new THREE.Vector3(x - w/2, 0, z - d/2),
+                        max: new THREE.Vector3(x + w/2, h, z + d/2),
+                        radius: Math.max(w, d) / 2
+                    });
+                }
+            }
+        }
+
+        function buildHillsTrees() {
+            const trunkGeo = new THREE.CylinderGeometry(0.5, 0.7, 5, 8);
+            const leavesGeo = new THREE.ConeGeometry(3.2, 9, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.9 });
+            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x2e5c1e, roughness: 0.9 });
+
+            for (let i = 0; i < 140; i++) {
+                const x = (Math.random() - 0.5) * 420;
+                const z = (Math.random() - 0.5) * 420;
+                if (Math.abs(x) < 35 && Math.abs(z) < 35) continue;
+
+                const y = getTerrainHeight(x, z, 'hills');
+                const group = new THREE.Group();
+
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.y = 2.5;
+                trunk.castShadow = true;
+                group.add(trunk);
+
+                const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+                leaves.position.y = 7.0;
+                leaves.castShadow = true;
+                group.add(leaves);
+
+                group.position.set(x, y, z);
+                scene.add(group);
+
+                GAME_STATE.obstacles.push({
+                    type: 'tree',
+                    isFallen: false,
+                    mesh: group,
+                    center: new THREE.Vector3(x, y, z),
+                    radius: 1.5,
+                    fallProgress: 0,
+                    fallDirection: new THREE.Vector3()
+                });
+            }
+        }
+
+        /* =========================================================================
+           TANK MODEL & CONTROLLER (WAR THUNDER PHYSICS)
+           ========================================================================= */
+        class Tank {
+            constructor(id, team, isAI = false) {
+                this.id = id;
+                this.team = team;
+                this.isAI = isAI;
+
+                // Physics state
+                this.position = new THREE.Vector3();
+                this.velocity = new THREE.Vector3();
+                this.hullRotation = 0; // Yaw angle in radians
+                this.turretRotation = 0; // Relative yaw angle
+                this.barrelPitch = 0; // Relative elevation angle (pitch)
+                this.speed = 0;
+                
+                // Specs & Stats
+                this.maxSpeed = 13.0; // m/s
+                this.reverseSpeed = -5.5;
+                this.acceleration = 14.0;
+                this.turnSpeed = 1.6; // rad/s
+                this.turretTurnSpeed = 1.8; // rad/s
+                this.elevationSpeed = 1.2; // rad/s
+                this.maxElevation = THREE.MathUtils.degToRad(25);
+                this.minElevation = THREE.MathUtils.degToRad(-10);
+
+                this.hp = 100;
+                this.maxHp = 100;
+                this.reloadTime = 3.0;
+                this.reloadTimer = 0;
+
+                // Create 3D Mesh
+                this.mesh = this.createTankMesh();
+                scene.add(this.mesh);
+
+                // Inputs
+                this.inputs = { forward: 0, turn: 0, aimPoint: new THREE.Vector3(), fire: false };
+            }
+
+            createTankMesh() {
+                const group = new THREE.Group();
+                const teamColor = this.team === 'blue' ? 0x2563eb : 0xd97706;
+
+                // 1. Hull Base
+                const hullGeo = new THREE.BoxGeometry(3.6, 1.2, 5.5);
+                const hullMat = new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.6, metalness: 0.4 });
+                const hull = new THREE.Mesh(hullGeo, hullMat);
+                hull.position.y = 1.0;
+                hull.castShadow = true;
+                hull.receiveShadow = true;
+                group.add(hull);
+
+                // Tracks Visual
+                const trackGeo = new THREE.BoxGeometry(0.7, 0.9, 5.7);
+                const trackMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.9 });
+                const trackL = new THREE.Mesh(trackGeo, trackMat);
+                trackL.position.set(-1.8, 0.7, 0);
+                trackL.castShadow = true;
+                group.add(trackL);
+
+                const trackR = trackL.clone();
+                trackR.position.x = 1.8;
+                group.add(trackR);
+
+                // 2. Turret Pivot Group
+                this.turretGroup = new THREE.Group();
+                this.turretGroup.position.set(0, 1.7, -0.3);
+
+                const turretGeo = new THREE.BoxGeometry(2.6, 1.0, 3.2);
+                const turretMat = new THREE.MeshStandardMaterial({ color: teamColor, roughness: 0.5, metalness: 0.5 });
+                const turret = new THREE.Mesh(turretGeo, turretMat);
+                turret.position.y = 0.5;
+                turret.castShadow = true;
+                this.turretGroup.add(turret);
+
+                // 3. Cannon Barrel & Elevation Pivot
+                this.barrelPivot = new THREE.Group();
+                this.barrelPivot.position.set(0, 0.6, 1.2);
+                this.turretGroup.add(this.barrelPivot);
+
+                const barrelGeo = new THREE.CylinderGeometry(0.15, 0.18, 4.2, 12);
+                barrelGeo.rotateX(Math.PI / 2);
+                barrelGeo.translate(0, 0, 2.1);
+                const barrelMat = new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.8, roughness: 0.2 });
+                this.barrelMesh = new THREE.Mesh(barrelGeo, barrelMat);
+                this.barrelMesh.castShadow = true;
+                this.barrelPivot.add(this.barrelMesh);
+
+                // Barrel Tip / Muzzle Point
+                this.muzzlePoint = new THREE.Object3D();
+                this.muzzlePoint.position.set(0, 0, 4.2);
+                this.barrelPivot.add(this.muzzlePoint);
+
+                group.add(this.turretGroup);
+
+                // HP Indicator Sprite
+                this.hpBarMesh = this.createHPIndicator();
+                group.add(this.hpBarMesh);
+
+                return group;
+            }
+
+            createHPIndicator() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = this.team === 'blue' ? '#3b82f6' : '#ef4444';
+                ctx.font = 'Bold 16px sans-serif';
+                ctx.fillText(this.id, 10, 22);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMat = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMat);
+                sprite.position.set(0, 4.2, 0);
+                sprite.scale.set(4, 1, 1);
+                return sprite;
+            }
+
+            spawn(x, z) {
+                this.position.set(x, getTerrainHeight(x, z, GAME_STATE.mapName), z);
+                this.speed = 0;
+                this.hp = this.maxHp;
+                this.mesh.position.copy(this.position);
+            }
+
+            update(delta) {
+                if (this.hp <= 0) return;
+
+                if (this.reloadTimer > 0) {
+                    this.reloadTimer -= delta;
+                }
+
+                // --- 1. SLIPPERINESS & TERRAIN SLOPE PHYSICS ---
+                const normal = getTerrainNormal(this.position.x, this.position.z, GAME_STATE.mapName);
+                const upVector = new THREE.Vector3(0, 1, 0);
+                const slopeAngleRad = normal.angleTo(upVector);
+                const slopeAngleDeg = THREE.MathUtils.radToDeg(slopeAngleRad);
+
+                let slipVector = new THREE.Vector3(0, 0, 0);
+
+                if (slopeAngleDeg > PHYSICS.maxSlopeAngle) {
+                    const slideDir = new THREE.Vector3(normal.x, 0, normal.z).normalize();
+                    const force = (slopeAngleDeg - PHYSICS.maxSlopeAngle) * PHYSICS.slipGravityFactor * delta;
+                    slipVector.copy(slideDir).multiplyScalar(force);
+                }
+
+                // --- 2. ACCELERATION & TURNING ---
+                let targetSpeed = 0;
+                if (this.inputs.forward > 0) targetSpeed = this.maxSpeed;
+                else if (this.inputs.forward < 0) targetSpeed = this.reverseSpeed;
+
+                if (this.speed < targetSpeed) {
+                    this.speed = Math.min(this.speed + this.acceleration * delta, targetSpeed);
+                } else if (this.speed > targetSpeed) {
+                    this.speed = Math.max(this.speed - this.acceleration * 1.5 * delta, targetSpeed);
+                }
+
+                if (this.inputs.turn !== 0 && (Math.abs(this.speed) >= 0.1 || this.inputs.forward !== 0)) {
+                    const dir = this.inputs.forward < 0 ? -1 : 1;
+                    this.hullRotation -= this.inputs.turn * this.turnSpeed * delta * dir;
+                }
+
+                const forwardDir = new THREE.Vector3(Math.sin(this.hullRotation), 0, Math.cos(this.hullRotation));
+                this.velocity.copy(forwardDir).multiplyScalar(this.speed * delta);
+                this.velocity.add(slipVector);
+
+                const nextPos = this.position.clone().add(this.velocity);
+                if (!this.checkObstacleCollision(nextPos)) {
+                    this.position.copy(nextPos);
+                } else {
+                    this.speed = 0;
+                }
+
+                // --- 3. STABLE 4-POINT TERRAIN ALIGNMENT ---
+                const halfW = 1.8;
+                const halfL = 2.75;
+                const sinRot = Math.sin(this.hullRotation);
+                const cosRot = Math.cos(this.hullRotation);
+
+                // Calculate heights at 4 track corners
+                const flX = this.position.x + ( sinRot * halfL - cosRot * halfW);
+                const flZ = this.position.z + ( cosRot * halfL + sinRot * halfW);
+                const frX = this.position.x + ( sinRot * halfL + cosRot * halfW);
+                const frZ = this.position.z + ( cosRot * halfL - sinRot * halfW);
+                const blX = this.position.x + (-sinRot * halfL - cosRot * halfW);
+                const blZ = this.position.z + (-cosRot * halfL + sinRot * halfW);
+                const brX = this.position.x + (-sinRot * halfL + cosRot * halfW);
+                const brZ = this.position.z + (-cosRot * halfL - sinRot * halfW);
+
+                const flY = getTerrainHeight(flX, flZ, GAME_STATE.mapName);
+                const frY = getTerrainHeight(frX, frZ, GAME_STATE.mapName);
+                const blY = getTerrainHeight(blX, blZ, GAME_STATE.mapName);
+                const brY = getTerrainHeight(brX, brZ, GAME_STATE.mapName);
+
+                const avgY = (flY + frY + blY + brY) / 4.0;
+                this.position.y = avgY;
+
+                // Odwrócenie znaków różnicy wysokości dla poprawnego pochylenia (Pitch & Roll)
+                const frontY = (flY + frY) / 2.0;
+                const backY = (blY + brY) / 2.0;
+                const leftY = (flY + blY) / 2.0;
+                const rightY = (frY + brY) / 2.0;
+
+                // Odwrócono kierunki (-atan2): czołg wjeżdżając pod górę unosi przód, a przechylając się w lewo zapada lewy bok
+                const pitch = -Math.atan2(frontY - backY, halfL * 2);
+                const roll = -Math.atan2(leftY - rightY, halfW * 2);
+
+                // Apply stable Euler rotation order: Yaw (Y) -> Pitch (X) -> Roll (Z)
+                const targetEuler = new THREE.Euler(pitch, this.hullRotation, roll, 'YXZ');
+                const targetQuaternion = new THREE.Quaternion().setFromEuler(targetEuler);
+
+                this.mesh.quaternion.slerp(targetQuaternion, delta * 12.0);
+                this.mesh.position.copy(this.position);
+
+                // --- 4. TURRET & ELEVATION AIMING ---
+                if (!(this === GAME_STATE.playerTank && cameraMode === 'SCOPE')) {
+                    this.updateTurretAim(delta);
+                }
+
+                // --- 5. FIRING MECHANICS ---
+                if (this.inputs.fire && this.reloadTimer <= 0) {
+                    this.fireShell();
+                }
+
+                if (this.isAI && GAME_STATE.isHost) {
+                    this.updateAILogic(delta);
+                }
+            }
+
+            updateTurretAim(delta) {
+                if (!this.inputs.aimPoint) return;
+
+                const turretWorldPos = new THREE.Vector3();
+                this.turretGroup.getWorldPosition(turretWorldPos);
+
+                // Direction vector to aim target point in world coordinates
+                const targetDir = this.inputs.aimPoint.clone().sub(turretWorldPos).normalize();
+                
+                // Convert target direction to local coordinate space of the hull
+                const localTargetDir = targetDir.clone();
+                const invHullQuat = this.mesh.quaternion.clone().invert();
+                localTargetDir.applyQuaternion(invHullQuat);
+
+                // 1. Turret Yaw (Horizontal alignment)
+                const targetYaw = Math.atan2(localTargetDir.x, localTargetDir.z);
+
+                let diffYaw = targetYaw - this.turretRotation;
+                diffYaw = Math.atan2(Math.sin(diffYaw), Math.cos(diffYaw));
+
+                const maxStepYaw = this.turretTurnSpeed * delta;
+                if (Math.abs(diffYaw) < maxStepYaw) {
+                    this.turretRotation = targetYaw;
+                } else {
+                    this.turretRotation += Math.sign(diffYaw) * maxStepYaw;
+                }
+
+                this.turretGroup.rotation.y = this.turretRotation;
+
+                // 2. Barrel Pitch / Elevation (Vertical alignment)
+                const horizontalDistance = Math.sqrt(localTargetDir.x * localTargetDir.x + localTargetDir.z * localTargetDir.z);
+                const targetPitch = Math.atan2(localTargetDir.y, horizontalDistance);
+                const clampedPitch = Math.max(this.minElevation, Math.min(this.maxElevation, targetPitch));
+
+                let diffPitch = clampedPitch - this.barrelPitch;
+                const maxStepPitch = this.elevationSpeed * delta;
+                if (Math.abs(diffPitch) < maxStepPitch) {
+                    this.barrelPitch = clampedPitch;
+                } else {
+                    this.barrelPitch += Math.sign(diffPitch) * maxStepPitch;
+                }
+
+                this.barrelPivot.rotation.x = -this.barrelPitch;
+            }
+
+            checkObstacleCollision(newPos) {
+                if (Math.abs(newPos.x) > 230 || Math.abs(newPos.z) > 230) return true;
+
+                for (let obs of GAME_STATE.obstacles) {
+                    if (obs.type === 'box') {
+                        if (newPos.x > obs.min.x - 2 && newPos.x < obs.max.x + 2 &&
+                            newPos.z > obs.min.z - 2 && newPos.z < obs.max.z + 2) {
+                            return true;
+                        }
+                    } else if (obs.type === 'tree') {
+                        const dist = newPos.distanceTo(obs.center);
+                        if (dist < obs.radius + 2.0) {
+                            if (!obs.isFallen) {
+                                // Knock down tree on tank impact!
+                                obs.isFallen = true;
+                                obs.fallDirection.copy(this.velocity).normalize();
+                                animateTreeFall(obs);
+                            }
+                            // Fallen logs no longer block tank movement
+                            return false;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            fireShell() {
+                this.reloadTimer = this.reloadTime;
+
+                const origin = new THREE.Vector3();
+                this.muzzlePoint.getWorldPosition(origin);
+
+                const dir = new THREE.Vector3();
+                this.muzzlePoint.getWorldDirection(dir);
+
+                const shell = new BallisticShell(origin, dir, this.id, this.team);
+                GAME_STATE.shells.push(shell);
+
+                createMuzzleFlash(origin);
+            }
+
+            takeDamage(amount, hitterId) {
+                this.hp = Math.max(0, this.hp - amount);
+                if (this.hp <= 0) {
+                    createExplosion(this.position);
+                    if (this.team === 'blue') GAME_STATE.scores.red += 1;
+                    else GAME_STATE.scores.blue += 1;
+
+                    // Usuwanie zniszczonego czołgu z pola bitwy
+                    scene.remove(this.mesh);
+                    const idx = GAME_STATE.tanks.indexOf(this);
+                    if (idx !== -1) {
+                        GAME_STATE.tanks.splice(idx, 1);
+                    }
+                }
+            }
+
+            updateAILogic(delta) {
+                let nearestEnemy = null;
+                let minDist = 99999;
+
+                for (let tank of GAME_STATE.tanks) {
+                    if (tank.team !== this.team && tank.hp > 0) {
+                        const d = this.position.distanceTo(tank.position);
+                        if (d < minDist) {
+                            minDist = d;
+                            nearestEnemy = tank;
+                        }
+                    }
+                }
+
+                if (nearestEnemy) {
+                    const toEnemy = nearestEnemy.position.clone().sub(this.position);
+                    const targetAngle = Math.atan2(toEnemy.x, toEnemy.z);
+                    
+                    let angleDiff = targetAngle - this.hullRotation;
+                    angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+
+                    if (Math.abs(angleDiff) > 0.2) {
+                        this.inputs.turn = Math.sign(angleDiff);
+                        this.inputs.forward = 0.3;
+                    } else {
+                        this.inputs.turn = 0;
+                        this.inputs.forward = minDist > 40 ? 1.0 : 0;
+                    }
+
+                    // Celowanie botów w pozycję wroga
+                    this.inputs.aimPoint.copy(nearestEnemy.position).add(new THREE.Vector3(0, 1.0, 0));
+                    
+                    // Wrogie AI strzela gdy wyceluje w kierunku przeciwnika
+                    if (minDist < 300 && Math.abs(angleDiff) < 0.35) {
+                        this.inputs.fire = true;
+                    } else {
+                        this.inputs.fire = false;
+                    }
+                } else {
+                    this.forward = 0;
+                    this.inputs.turn = 0;
+                    this.inputs.fire = false;
+                }
+            }
+        }
+
+        // Tree falling physical animation transform
+        function animateTreeFall(treeObs) {
+            const group = treeObs.mesh;
+            const startRot = group.rotation.clone();
+            const fallAxis = new THREE.Vector3(-treeObs.fallDirection.z, 0, treeObs.fallDirection.x).normalize();
+            
+            let angle = 0;
+            const timer = setInterval(() => {
+                angle += 0.08;
+                group.rotateOnWorldAxis(fallAxis, 0.08);
+                if (angle >= Math.PI / 2) {
+                    clearInterval(timer);
+                }
+            }, 20);
+        }
+
+        /* =========================================================================
+           BALLISTIC SHELL & ARMOR PENETRATION PHYSICS
+           ========================================================================= */
+        class BallisticShell {
+            constructor(origin, direction, ownerId, ownerTeam) {
+                this.position = origin.clone();
+                this.velocity = direction.clone().multiplyScalar(PHYSICS.shellVelocity);
+                this.ownerId = ownerId;
+                this.ownerTeam = ownerTeam;
+                this.alive = true;
+                this.lifeTime = 0;
+
+                const geo = new THREE.SphereGeometry(0.2, 8, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+                this.mesh = new THREE.Mesh(geo, mat);
+                this.mesh.position.copy(this.position);
+                scene.add(this.mesh);
+            }
+
+            update(delta) {
+                if (!this.alive) return;
+
+                this.lifeTime += delta;
+                if (this.lifeTime > 5.0) {
+                    this.destroy();
+                    return;
+                }
+
+                this.velocity.y -= PHYSICS.shellGravity * delta;
+
+                const prevPos = this.position.clone();
+                this.position.add(this.velocity.clone().multiplyScalar(delta));
+                this.mesh.position.copy(this.position);
+
+                // Check Tank Hit
+                for (let tank of GAME_STATE.tanks) {
+                    if (tank.id === this.ownerId || tank.hp <= 0) continue;
+
+                    const tankBox = new THREE.Box3().setFromObject(tank.mesh);
+                    if (tankBox.containsPoint(this.position)) {
+                        this.calculateArmorImpact(tank);
+                        this.destroy();
+                        return;
+                    }
+                }
+
+                // Check Trees and Fallen Logs Hit
+                for (let obs of GAME_STATE.obstacles) {
+                    if (obs.type === 'tree') {
+                        const distToTrunk = new THREE.Vector2(this.position.x - obs.center.x, this.position.z - obs.center.z).length();
+                        const groundY = getTerrainHeight(obs.center.x, obs.center.z, GAME_STATE.mapName);
+
+                        if (!obs.isFallen) {
+                            // Standing tree blocks shells up to 10m height
+                            if (distToTrunk < 2.0 && this.position.y >= groundY && this.position.y <= groundY + 10.0) {
+                                createDirtImpact(this.position);
+                                this.destroy();
+                                return;
+                            }
+                        } else {
+                            // Fallen Log blocks shells near ground surface
+                            if (distToTrunk < 4.0 && Math.abs(this.position.y - groundY) < 1.2) {
+                                createDirtImpact(this.position);
+                                this.destroy();
+                                return;
+                            }
+                        }
+                    } else if (obs.type === 'box') {
+                        if (this.position.x > obs.min.x && this.position.x < obs.max.x &&
+                            this.position.z > obs.min.z && this.position.z < obs.max.z &&
+                            this.position.y < obs.max.y) {
+                            createSparkImpact(this.position);
+                            this.destroy();
+                            return;
+                        }
+                    }
+                }
+
+                // Check Terrain Ground Hit
+                const terrainY = getTerrainHeight(this.position.x, this.position.z, GAME_STATE.mapName);
+                if (this.position.y <= terrainY) {
+                    createDirtImpact(this.position);
+                    this.destroy();
+                    return;
+                }
+            }
+
+            calculateArmorImpact(targetTank) {
+                const impactDir = this.velocity.clone().normalize();
+                const tankNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(targetTank.mesh.quaternion);
+
+                const cosTheta = Math.abs(impactDir.dot(tankNormal));
+                const impactAngleDeg = THREE.MathUtils.radToDeg(Math.acos(cosTheta));
+
+                if (impactAngleDeg > 70) {
+                    triggerHitNotification("RYKOSZET!", "text-amber-400");
+                    createSparkImpact(this.position);
+                } else {
+                    const damage = Math.floor(35 + Math.random() * 20);
+                    targetTank.takeDamage(damage, this.ownerId);
+
+                    if (this.ownerId === GAME_STATE.playerTank.id) {
+                        triggerHitNotification(`TRAFIENIE! -${damage} HP`, "text-red-500");
+                    }
+                    createExplosion(this.position, 1.5);
+                }
+            }
+
+            destroy() {
+                this.alive = false;
+                scene.remove(this.mesh);
+            }
+        }
+
+        /* =========================================================================
+           PARTICLES & VISUAL EFFECTS
+           ========================================================================= */
+        function createMuzzleFlash(pos) {
+            const flashGeo = new THREE.SphereGeometry(0.8, 8, 8);
+            const flashMat = new THREE.MeshBasicMaterial({ color: 0xffcc44, transparent: true, opacity: 0.9 });
+            const flash = new THREE.Mesh(flashGeo, flashMat);
+            flash.position.copy(pos);
+            scene.add(flash);
+
+            setTimeout(() => scene.remove(flash), 60);
+        }
+
+        function createSparkImpact(pos) {
+            const pGeo = new THREE.SphereGeometry(0.3, 6, 6);
+            const pMat = new THREE.MeshBasicMaterial({ color: 0xffff55 });
+            const p = new THREE.Mesh(pGeo, pMat);
+            p.position.copy(pos);
+            scene.add(p);
+            setTimeout(() => scene.remove(p), 150);
+        }
+
+        function createDirtImpact(pos) {
+            const pGeo = new THREE.SphereGeometry(0.6, 6, 6);
+            const pMat = new THREE.MeshStandardMaterial({ color: 0x775533, roughness: 0.9 });
+            const p = new THREE.Mesh(pGeo, pMat);
+            p.position.copy(pos);
+            scene.add(p);
+            setTimeout(() => scene.remove(p), 400);
+        }
+
+        function createExplosion(pos, scale = 3.0) {
+            const group = new THREE.Group();
+            const expGeo = new THREE.SphereGeometry(scale, 12, 12);
+            const expMat = new THREE.MeshBasicMaterial({ color: 0xff4400, wireframe: true });
+            const exp = new THREE.Mesh(expGeo, expMat);
+            group.add(exp);
+            group.position.copy(pos);
+            scene.add(group);
+
+            let s = 1.0;
+            const interval = setInterval(() => {
+                s += 0.2;
+                group.scale.set(s, s, s);
+                if (s > 2.2) {
+                    clearInterval(interval);
+                    scene.remove(group);
+                }
+            }, 30);
+        }
+
+        function triggerHitNotification(text, colorClass) {
+            const el = document.getElementById('hit-notification');
+            const txt = document.getElementById('hit-text');
+            txt.innerText = text;
+            txt.className = `text-xl font-extrabold uppercase tracking-widest drop-shadow-md ${colorClass}`;
+            el.style.opacity = '1';
+            setTimeout(() => el.style.opacity = '0', 1200);
+        }
+
+        /* =========================================================================
+           USER INPUTS & CONTROLS (WAR THUNDER SCHEME)
+           ========================================================================= */
+        const keys = {};
+        const raycaster = new THREE.Raycaster();
+        let mouseScreenPos = new THREE.Vector2(0, 0);
+
+        function setupInputListeners() {
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
+
+            window.addEventListener('mousemove', e => {
+                if (document.pointerLockElement === document.body) {
+                    // W trybie lunety mysz ustawia tylko docelowy kat wiezy i lufy.
+                    if (cameraMode === 'SCOPE' && GAME_STATE.playerTank) {
+                        const tank = GAME_STATE.playerTank;
+
+                        // Mysz w prawo = wieza w prawo.
+                        tank.scopeTurretTarget = (tank.scopeTurretTarget ?? tank.turretRotation) - e.movementX * 0.0015;
+                        tank.scopeTurretTarget = Math.atan2(Math.sin(tank.scopeTurretTarget), Math.cos(tank.scopeTurretTarget));
+
+                        tank.scopeBarrelTarget = Math.max(
+                            tank.minElevation,
+                            Math.min(tank.maxElevation, (tank.scopeBarrelTarget ?? tank.barrelPitch) - e.movementY * 0.0015)
+                        );
+
+                        return;
+                    }
+
+                    // Update reticle screen position inside pointer lock
+                    mouseScreenPos.x += e.movementX * 0.0015;
+                    mouseScreenPos.y -= e.movementY * 0.0015;
+                    mouseScreenPos.x = Math.max(-0.9, Math.min(0.9, mouseScreenPos.x));
+                    mouseScreenPos.y = Math.max(-0.9, Math.min(0.9, mouseScreenPos.y));
+
+                    // Move crosshair SVG overlay
+                    const ch = document.getElementById('crosshair-container');
+                    const cx = (mouseScreenPos.x + 1) * 0.5 * window.innerWidth;
+                    const cy = (-mouseScreenPos.y + 1) * 0.5 * window.innerHeight;
+                    ch.style.left = `${cx}px`;
+                    ch.style.top = `${cy}px`;
+                }
+            });
+
+            window.addEventListener('mousedown', e => {
+                if (e.button === 0 && GAME_STATE.running) {
+                    if (!isPointerLocked) {
+                        document.body.requestPointerLock();
+                    } else if (GAME_STATE.playerTank) {
+                        GAME_STATE.playerTank.inputs.fire = true;
+                    }
+                } else if (e.button === 2 && GAME_STATE.running) {
+                    toggleCameraMode();
+                }
+            });
+
+            window.addEventListener('mouseup', e => {
+                if (e.button === 0 && GAME_STATE.playerTank) {
+                    GAME_STATE.playerTank.inputs.fire = false;
+                }
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === document.body;
+            });
+        }
+
+        function processPlayerInput() {
+            if (!GAME_STATE.playerTank || GAME_STATE.playerTank.hp <= 0) return;
+
+            const player = GAME_STATE.playerTank;
+
+            // WSAD Movement
+            let fwd = 0;
+            let trn = 0;
+
+            if (keys['KeyW'] || keys['ArrowUp']) fwd += 1;
+            if (keys['KeyS'] || keys['ArrowDown']) fwd -= 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) trn -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) trn += 1;
+
+            player.inputs.forward = fwd;
+            player.inputs.turn = trn;
+
+            // Screen crosshair raycast -> 3D Target Point for Turret & Elevation
+            raycaster.setFromCamera(mouseScreenPos, camera);
+            const intersects = raycaster.intersectObject(GAME_STATE.terrainMesh);
+            
+            if (intersects.length > 0) {
+                player.inputs.aimPoint.copy(intersects[0].point);
+            } else {
+                const dir = raycaster.ray.direction;
+                player.inputs.aimPoint.copy(camera.position).add(dir.clone().multiplyScalar(300));
+            }
+        }
+
+        function toggleCameraMode() {
+            const scopeEl = document.getElementById('scope-vignette');
+
+            if (cameraMode === 'TPP') {
+                cameraMode = 'SCOPE';
+                scopeEl.style.display = 'block';
+            } else {
+                cameraMode = 'TPP';
+                scopeEl.style.display = 'none';
+            }
+        }
+
+        function updateCamera(delta = 0.016) {
+            if (!GAME_STATE.playerTank) return;
+
+            const player = GAME_STATE.playerTank;
+            const tankPos = player.position.clone().add(new THREE.Vector3(0, 2.2, 0));
+
+            if (cameraMode === 'TPP') {
+                // Stabilna kamera TPP podążająca za ruchem kadłuba
+                const camDist = 12.0;
+                const camHeight = 4.5;
+                
+                const backOffset = new THREE.Vector3(
+                    -Math.sin(player.hullRotation) * camDist,
+                    camHeight,
+                    -Math.cos(player.hullRotation) * camDist
+                );
+
+                camera.position.copy(tankPos).add(backOffset);
+                camera.lookAt(tankPos.clone().add(new THREE.Vector3(0, 0.8, 0)));
+            } else if (cameraMode === 'SCOPE') {
+                // Plynny ruch wiezy i lufy do pozycji docelowej.
+                if (player.scopeTurretTarget === undefined) player.scopeTurretTarget = player.turretRotation;
+                if (player.scopeBarrelTarget === undefined) player.scopeBarrelTarget = player.barrelPitch;
+
+                let yawDiff = player.scopeTurretTarget - player.turretRotation;
+                yawDiff = Math.atan2(Math.sin(yawDiff), Math.cos(yawDiff));
+                player.turretRotation += yawDiff * Math.min(1, delta * 8.0);
+                player.turretGroup.rotation.y = player.turretRotation;
+
+                player.barrelPitch += (player.scopeBarrelTarget - player.barrelPitch) * Math.min(1, delta * 8.0);
+                player.barrelPivot.rotation.x = -player.barrelPitch;
+
+                const sightLocal = new THREE.Vector3(1.2, 2.55, 0.35);
+                const sightWorld = player.mesh.localToWorld(sightLocal.clone());
+                camera.position.copy(sightWorld);
+
+                const barrelDir = new THREE.Vector3(0, 0, 1);
+                const barrelWorldQuat = new THREE.Quaternion();
+                player.barrelPivot.getWorldQuaternion(barrelWorldQuat);
+                barrelDir.applyQuaternion(barrelWorldQuat).normalize();
+
+                camera.lookAt(camera.position.clone().add(barrelDir.multiplyScalar(100)));
+
+                // Punkt celowania jest synchronizowany z rzeczywista lufa.
+                player.inputs.aimPoint.copy(camera.position).add(barrelDir.clone().multiplyScalar(300));
+            }
+        }
+
+        /* =========================================================================
+           PEERJS MULTIPLAYER (WEBRTC P2P HOST/CLIENT)
+           ========================================================================= */
+        let peer = null;
+        let connections = [];
+
+        function initMultiplayerHost() {
+            peer = new Peer();
+
+            peer.on('open', id => {
+                GAME_STATE.myPeerId = id;
+                GAME_STATE.isHost = true;
+                document.getElementById('current-peer-id').innerText = id;
+                document.getElementById('room-status-box').classList.remove('hidden');
+                document.getElementById('btn-start-mp-game').classList.remove('hidden');
+                document.getElementById('connection-status').innerText = 'Pokój gotowy. Czekanie na graczy...';
+            });
+
+            peer.on('connection', conn => {
+                connections.push(conn);
+                document.getElementById('connection-status').innerText = `Połączono z ${connections.length} graczem(ami)!`;
+                
+                conn.on('data', data => handleIncomingData(data, conn));
+            });
+        }
+
+        function joinMultiplayerRoom(hostId) {
+            peer = new Peer();
+
+            peer.on('open', id => {
+                GAME_STATE.myPeerId = id;
+                GAME_STATE.isHost = false;
+
+                const conn = peer.connect(hostId);
+                connections.push(conn);
+
+                conn.on('open', () => {
+                    document.getElementById('connection-status').innerText = 'Połączono z Hostem! Oczekiwanie na start...';
+                    document.getElementById('room-status-box').classList.remove('hidden');
+                });
+
+                conn.on('data', data => handleIncomingData(data, conn));
+            });
+        }
+
+        function broadcastState() {
+            if (!GAME_STATE.isHost || !GAME_STATE.running) return;
+
+            // Host syncs all tanks state to clients
+            const payload = {
+                type: 'SYNC',
+                scores: GAME_STATE.scores,
+                tanks: GAME_STATE.tanks.map(t => ({
+                    id: t.id,
+                    team: t.team,
+                    pos: [t.position.x, t.position.y, t.position.z],
+                    rot: t.hullRotation,
+                    turretRot: t.turretRotation,
+                    hp: t.hp
+                }))
+            };
+
+            connections.forEach(conn => conn.send(payload));
+        }
+
+        function handleIncomingData(data, conn) {
+            if (data.type === 'SYNC' && !GAME_STATE.isHost) {
+                // Client receives state from host
+                GAME_STATE.scores = data.scores;
+                data.tanks.forEach(tData => {
+                    let tank = GAME_STATE.tanks.find(t => t.id === tData.id);
+                    if (tank && tank !== GAME_STATE.playerTank) {
+                        tank.position.set(tData.pos[0], tData.pos[1], tData.pos[2]);
+                        tank.hullRotation = tData.rot;
+                        tank.turretRotation = tData.turretRot;
+                        tank.hp = tData.hp;
+                    }
+                });
+            } else if (data.type === 'INPUT' && GAME_STATE.isHost) {
+                // Host receives input from client
+                let tank = GAME_STATE.tanks.find(t => t.id === data.playerId);
+                if (tank) {
+                    tank.inputs = data.inputs;
+                }
+            }
+        }
+
+        /* =========================================================================
+           HUD & MINIMAP RENDERER
+           ========================================================================= */
+        const minimapCanvas = document.getElementById('minimap-canvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        function updateHUD() {
+            if (!GAME_STATE.playerTank) return;
+
+            const player = GAME_STATE.playerTank;
+
+            // Health Bar
+            const hpPct = Math.max(0, Math.floor((player.hp / player.maxHp) * 100));
+            document.getElementById('hud-hp-text').innerText = `${hpPct}%`;
+            document.getElementById('hud-hp-bar').style.width = `${hpPct}%`;
+
+            // Reload Indicator Bar
+            if (player.reloadTimer > 0) {
+                const reloadPct = Math.floor(((player.reloadTime - player.reloadTimer) / player.reloadTime) * 100);
+                document.getElementById('hud-reload-text').innerText = `ŁADOWANIE (${(player.reloadTimer).toFixed(1)}s)`;
+                document.getElementById('hud-reload-text').className = 'text-amber-400';
+                document.getElementById('hud-reload-bar').style.width = `${reloadPct}%`;
+                document.getElementById('hud-reload-bar').className = 'bg-amber-400 h-full';
+            } else {
+                document.getElementById('hud-reload-text').innerText = 'GOTOWE';
+                document.getElementById('hud-reload-text').className = 'text-emerald-400';
+                document.getElementById('hud-reload-bar').style.width = '100%';
+                document.getElementById('hud-reload-bar').className = 'bg-emerald-400 h-full';
+            }
+
+            // Speed & Incline
+            const kmh = Math.abs(Math.floor(player.speed * 3.6));
+            document.getElementById('hud-speed').innerText = `${kmh} km/h`;
+
+            const normal = getTerrainNormal(player.position.x, player.position.z, GAME_STATE.mapName);
+            const deg = Math.floor(THREE.MathUtils.radToDeg(normal.angleTo(new THREE.Vector3(0, 1, 0))));
+            document.getElementById('hud-incline').innerText = `${deg}°`;
+
+            // Scoreboard
+            document.getElementById('score-blue').innerText = GAME_STATE.scores.blue;
+            document.getElementById('score-red').innerText = GAME_STATE.scores.red;
+
+            // Render Minimap
+            drawMinimap();
+        }
+
+        function drawMinimap() {
+            const ctx = minimapCtx;
+            const w = minimapCanvas.width;
+            const h = minimapCanvas.height;
+            
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.fillRect(0, 0, w, h);
+
+            const mapScale = w / 500; // 500x500 world bounds
+
+            // Draw Obstacles
+            ctx.fillStyle = 'rgba(100, 116, 139, 0.5)';
+            GAME_STATE.obstacles.forEach(obs => {
+                if (obs.type === 'box') {
+                    const mx = (obs.min.x + 250) * mapScale;
+                    const mz = (obs.min.z + 250) * mapScale;
+                    const mw = (obs.max.x - obs.min.x) * mapScale;
+                    const mh = (obs.max.z - obs.min.z) * mapScale;
+                    ctx.fillRect(mx, mz, mw, mh);
+                }
+            });
+
+            // Draw Tanks
+            GAME_STATE.tanks.forEach(tank => {
+                if (tank.hp <= 0) return;
+
+                const mx = (tank.position.x + 250) * mapScale;
+                const mz = (tank.position.z + 250) * mapScale;
+
+                ctx.fillStyle = tank.team === 'blue' ? '#3b82f6' : '#ef4444';
+                ctx.beginPath();
+                ctx.arc(mx, mz, tank === GAME_STATE.playerTank ? 5 : 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Direction line for local player
+                if (tank === GAME_STATE.playerTank) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(mx, mz);
+                    ctx.lineTo(
+                        mx + Math.sin(tank.hullRotation) * 10,
+                        mz + Math.cos(tank.hullRotation) * 10
+                    );
+                    ctx.stroke();
+                }
+            });
+        }
+
+        /* =========================================================================
+           GAME MATCH START & MAIN LOOP
+           ========================================================================= */
+        function startGame(mapName, isMultiplayer) {
+            GAME_STATE.mapName = mapName;
+            GAME_STATE.mode = isMultiplayer ? 'MP' : 'SP';
+            GAME_STATE.running = true;
+
+            // UI Transitions
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('hud-container').classList.remove('hidden');
+
+            // Build Selected Terrain
+            buildMap(mapName);
+
+            // Spawn Player Tank
+            const nick = document.getElementById('player-nickname').value || 'Gracz_1';
+            GAME_STATE.myTeam = 'blue';
+            const playerTank = new Tank(nick, GAME_STATE.myTeam, false);
+            playerTank.spawn(-50, -50);
+            GAME_STATE.playerTank = playerTank;
+            GAME_STATE.tanks.push(playerTank);
+
+            // Auto-Balance Teams with Bots
+            if (GAME_STATE.mode === 'SP') {
+                // Spawn 3 Blue Bots & 4 Red Bots
+                for (let i = 1; i <= 3; i++) {
+                    const bot = new Tank(`Sojusznik_${i}`, 'blue', true);
+                    bot.spawn(-60 + i * 20, -80);
+                    GAME_STATE.tanks.push(bot);
+                }
+                for (let i = 1; i <= 4; i++) {
+                    const bot = new Tank(`Wróg_${i}`, 'red', true);
+                    bot.spawn(-60 + i * 30, 100);
+                    GAME_STATE.tanks.push(bot);
+                }
+            }
+
+            // Lock pointer & start loop
+            document.body.requestPointerLock();
+            document.getElementById('crosshair-container').classList.remove('hidden');
+            document.getElementById('dynamic-target-reticle').style.display = 'block';
+            animate();
+        }
+
+        function updateReticlePosition() {
+            if (!GAME_STATE.playerTank) return;
+            const player = GAME_STATE.playerTank;
+
+            // Obliczanie rzutu punktu celowania lufy w przestrzeni 3D na ekran 2D
+            const muzzlePos = new THREE.Vector3();
+            player.muzzlePoint.getWorldPosition(muzzlePos);
+
+            const barrelDir = new THREE.Vector3();
+            player.muzzlePoint.getWorldDirection(barrelDir);
+
+            const target3D = muzzlePos.clone().add(barrelDir.clone().multiplyScalar(150));
+            target3D.project(camera);
+
+            // Przeliczenie na współrzędne pikselowe ekranu
+            const x = (target3D.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-target3D.y * 0.5 + 0.5) * window.innerHeight;
+
+            const dynReticle = document.getElementById('dynamic-target-reticle');
+            if (target3D.z < 1) {
+                dynReticle.style.left = `${x}px`;
+                dynReticle.style.top = `${y}px`;
+                dynReticle.style.display = 'block';
+            } else {
+                dynReticle.style.display = 'none';
+            }
+        }
+
+        function animate() {
+            if (!GAME_STATE.running) return;
+
+            requestAnimationFrame(animate);
+
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            // Process Inputs
+            processPlayerInput();
+
+            // Client MP Input Transfer
+            if (GAME_STATE.mode === 'MP' && !GAME_STATE.isHost && connections.length > 0) {
+                connections[0].send({
+                    type: 'INPUT',
+                    playerId: GAME_STATE.playerTank.id,
+                    inputs: GAME_STATE.playerTank.inputs
+                });
+            }
+
+            // Update All Tanks
+            GAME_STATE.tanks.forEach(tank => tank.update(delta));
+
+            // Update Ballistic Shells
+            for (let i = GAME_STATE.shells.length - 1; i >= 0; i--) {
+                const shell = GAME_STATE.shells[i];
+                shell.update(delta);
+                if (!shell.alive) {
+                    GAME_STATE.shells.splice(i, 1);
+                }
+            }
+
+            // MP State Broadcast (Host)
+            if (GAME_STATE.mode === 'MP' && GAME_STATE.isHost) {
+                broadcastState();
+            }
+
+            // Update Camera, Dynamic Reticle & HUD
+            updateCamera(delta);
+            updateReticlePosition();
+            updateHUD();
+
+            // Render 3D Scene
+            // Wlasny czolg jest ukrywany tylko na czas renderowania lunety,
+            // a natychmiast po renderze wraca do widocznosci.
+            const scopeTank = GAME_STATE.playerTank;
+            const hideOwnTank = cameraMode === 'SCOPE' && scopeTank;
+            if (hideOwnTank) scopeTank.mesh.visible = false;
+
+            renderer.render(scene, camera);
+
+            if (hideOwnTank) scopeTank.mesh.visible = true;
+        }
+
+        /* =========================================================================
+           MENU INTERFACING EVENT LISTENERS
+           ========================================================================= */
+        window.onload = function() {
+            initThreeEngine();
+            setupInputListeners();
+
+            // Menu Tab Switchers
+            document.getElementById('btn-mp-tab').addEventListener('click', () => {
+                document.getElementById('mp-panel').classList.toggle('hidden');
+            });
+
+            // Singleplayer Start
+            document.getElementById('btn-sp').addEventListener('click', () => {
+                const selectedMap = document.getElementById('map-select').value;
+                startGame(selectedMap, false);
+            });
+
+            // Multiplayer Host Creation
+            document.getElementById('btn-create-host').addEventListener('click', () => {
+                initMultiplayerHost();
+            });
+
+            // Copy Peer ID Button
+            document.getElementById('copy-peer-id').addEventListener('click', () => {
+                const idText = document.getElementById('current-peer-id').innerText;
+                navigator.clipboard.writeText(idText);
+                alert('Skopiowano Peer ID do schowka!');
+            });
+
+            // Multiplayer Join Room
+            document.getElementById('btn-join-room').addEventListener('click', () => {
+                const hostId = document.getElementById('join-peer-id').value.trim();
+                if (hostId) {
+                    joinMultiplayerRoom(hostId);
+                }
+            });
+
+            // Multiplayer Start (Host Only)
+            document.getElementById('btn-start-mp-game').addEventListener('click', () => {
+                const selectedMap = document.getElementById('map-select').value;
+                startGame(selectedMap, true);
+            });
+        };
+    </script>
+</body>
+</html>
