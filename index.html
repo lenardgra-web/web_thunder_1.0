@@ -249,7 +249,10 @@
                     <div class="absolute inset-0 flex items-center -z-10"><div class="w-full border-t border-slate-800"></div></div>
                 </div>
                 <div class="flex gap-2">
-                    <input type="text" id="join-peer-id" placeholder="Wklej ID Pokoju Hosta..." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-cyan-500">
+                    <input type="text" id="join-peer-id" placeholder="Wklej ID Pokoju Hosta..." autocomplete="off" autocapitalize="off" spellcheck="false" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-cyan-500">
+                    <button id="btn-paste-id" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm font-semibold transition" title="Wklej kod ze schowka">
+                        <i class="fa-solid fa-paste"></i>
+                    </button>
                     <button id="btn-join-room" class="bg-slate-700 hover:bg-slate-600 px-5 py-2 rounded-lg text-sm font-semibold transition">
                         Dołącz
                     </button>
@@ -2701,7 +2704,35 @@
         let peer = null;
         let connections = [];
 
+        // Status multiplayer z komunikatami (także o błędach - wcześniej wszystko
+        // kończyło się ciszą i "nic się nie działo")
+        function setMpStatus(msg, color) {
+            const el = document.getElementById('connection-status');
+            if (el) {
+                el.innerText = msg;
+                el.className = 'mt-1 ' + (color || 'text-amber-400');
+            }
+            const box = document.getElementById('room-status-box');
+            if (box) box.classList.remove('hidden');
+        }
+
+        function handlePeerError(err) {
+            console.error('PeerJS:', err);
+            if (err && err.type === 'peer-unavailable') {
+                setMpStatus('Nie znaleziono pokoju o tym ID. Sprawdź kod (skopiuj go ponownie od hosta) i upewnij się, że host ma otwarty pokój.', 'text-red-400');
+            } else if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed')) {
+                setMpStatus('Błąd połączenia z serwerem PeerJS. Sprawdź internet i spróbuj ponownie za chwilę.', 'text-red-400');
+            } else if (err && err.type === 'unavailable-id') {
+                setMpStatus('ID pokoju zajęte - odśwież stronę i utwórz pokój ponownie.', 'text-red-400');
+            } else {
+                setMpStatus('Błąd multiplayer: ' + ((err && err.type) || (err && err.message) || 'nieznany'), 'text-red-400');
+            }
+        }
+
         function initMultiplayerHost() {
+            // Reset, jeśli pokój był już tworzony
+            if (peer) { try { peer.destroy(); } catch (e) {} peer = null; connections = []; }
+            setMpStatus('Łączenie z serwerem PeerJS... (tworzenie pokoju)');
             peer = new Peer();
             let nextTeam = 'red'; // host gra niebieskimi
 
@@ -2712,7 +2743,13 @@
                 document.getElementById('current-peer-id').innerText = id;
                 document.getElementById('room-status-box').classList.remove('hidden');
                 document.getElementById('btn-start-mp-game').classList.remove('hidden');
-                document.getElementById('connection-status').innerText = 'Pokój gotowy. Czekanie na graczy...';
+                setMpStatus('Pokój gotowy! Wyślij koledze ID (przycisk Kopiuj) i czekaj na dołączenie...', 'text-emerald-400');
+            });
+
+            peer.on('error', handlePeerError);
+            peer.on('disconnected', () => {
+                setMpStatus('Utracono połączenie z serwerem - próba wznowienia...', 'text-red-400');
+                try { peer.reconnect(); } catch (e) {}
             });
 
             peer.on('connection', conn => {
@@ -2720,29 +2757,76 @@
                 conn.mpSpawnIdx = connections.length + 1;
                 nextTeam = nextTeam === 'red' ? 'blue' : 'red';
                 connections.push(conn);
-                document.getElementById('connection-status').innerText =
-                    `Połączono z ${connections.length} graczem(ami)! (${conn.mpTeam.toUpperCase()} dołączył)`;
 
+                conn.on('open', () => {
+                    setMpStatus(`Połączono z ${connections.length} graczem(ami)! (${conn.mpTeam.toUpperCase()} dołączył)`, 'text-emerald-400');
+                });
+                conn.on('error', () => setMpStatus('Błąd połączenia z graczem.', 'text-red-400'));
+                conn.on('close', () => {
+                    const idx = connections.indexOf(conn);
+                    if (idx !== -1) connections.splice(idx, 1);
+                    // Usuń czołg rozłączonego gracza
+                    if (conn.mpPlayerId) {
+                        const t = GAME_STATE.tanks.find(t2 => t2.id === conn.mpPlayerId && t2 !== GAME_STATE.playerTank);
+                        if (t) {
+                            scene.remove(t.mesh);
+                            const ti = GAME_STATE.tanks.indexOf(t);
+                            if (ti !== -1) GAME_STATE.tanks.splice(ti, 1);
+                        }
+                    }
+                    setMpStatus(`Gracz rozłączony. Połączonych: ${connections.length}.`, 'text-amber-400');
+                });
                 conn.on('data', data => handleIncomingData(data, conn));
             });
         }
 
         function joinMultiplayerRoom(hostId) {
+            if (peer) { try { peer.destroy(); } catch (e) {} peer = null; connections = []; }
+            setMpStatus('Łączenie z serwerem PeerJS...');
             peer = new Peer();
+            let joined = false;
+            let joinTimeout = null;
 
             peer.on('open', id => {
                 GAME_STATE.myPeerId = id;
                 GAME_STATE.isHost = false;
+                setMpStatus('Szukanie hosta: ' + hostId + ' ...');
 
-                const conn = peer.connect(hostId);
+                const conn = peer.connect(hostId, { reliable: true });
                 connections.push(conn);
 
-                conn.on('open', () => {
-                    document.getElementById('connection-status').innerText = 'Połączono z Hostem! Oczekiwanie na start...';
-                    document.getElementById('room-status-box').classList.remove('hidden');
-                });
+                // Timeout - jeśli host nie odpowie w 12 s, pokaż błąd
+                joinTimeout = setTimeout(() => {
+                    if (!joined) setMpStatus('Nie udało się połączyć w 12 sekund. Sprawdź kod pokoju i czy host nadal czeka w menu Multiplayer.', 'text-red-400');
+                }, 12000);
 
+                conn.on('open', () => {
+                    joined = true;
+                    clearTimeout(joinTimeout);
+                    document.getElementById('room-status-box').classList.remove('hidden');
+                    setMpStatus('Połączono z Hostem! Oczekiwanie na start...', 'text-emerald-400');
+                });
+                conn.on('error', () => {
+                    clearTimeout(joinTimeout);
+                    setMpStatus('Błąd połączenia z hostem.', 'text-red-400');
+                });
+                conn.on('close', () => {
+                    if (GAME_STATE.running) {
+                        stopGame();
+                        setMpStatus('Host rozłączył się - mecz zakończony.', 'text-red-400');
+                    } else {
+                        setMpStatus('Host rozłączył się.', 'text-red-400');
+                    }
+                });
                 conn.on('data', data => handleIncomingData(data, conn));
+            });
+
+            peer.on('error', handlePeerError);
+            peer.on('disconnected', () => {
+                if (!joined) {
+                    setMpStatus('Utracono połączenie z serwerem - próba wznowienia...', 'text-red-400');
+                    try { peer.reconnect(); } catch (e) {}
+                }
             });
         }
 
@@ -2803,6 +2887,7 @@
                 }
             } else if (data.type === 'JOIN' && GAME_STATE.isHost) {
                 // Klient dołączył do meczu - host tworzy jego zdalny czołg
+                conn.mpPlayerId = data.id; // zapamiętaj, czyj to czołg (usuwanie po rozłączeniu)
                 if (!GAME_STATE.tanks.find(t => t.id === data.id)) {
                     const t = new Tank(data.id, data.team || 'red', false);
                     const sp = TEAM_SPAWNS[data.team] ? TEAM_SPAWNS[data.team][0] : [0, 480];
@@ -3295,18 +3380,58 @@
             });
 
             // Copy Peer ID Button
-            document.getElementById('copy-peer-id').addEventListener('click', () => {
+            document.getElementById('copy-peer-id').addEventListener('click', async () => {
                 const idText = document.getElementById('current-peer-id').innerText;
-                navigator.clipboard.writeText(idText);
-                alert('Skopiowano Peer ID do schowka!');
+                try {
+                    await navigator.clipboard.writeText(idText);
+                    setMpStatus('Skopiowano ID pokoju! Wyślij je koledze (np. komunikatorem).', 'text-emerald-400');
+                } catch (err) {
+                    // Awaryjnie: zaznacz ID, by dało się skopiować ręcznie
+                    const el = document.getElementById('current-peer-id');
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    setMpStatus('Nie udało się skopiować automatycznie - ID zaznaczone, skopiuj je ręcznie (Ctrl+C / przytrzymaj).', 'text-amber-400');
+                }
+            });
+
+            // Wklejanie kodu pokoju ze schowka (jeden klik)
+            document.getElementById('btn-paste-id').addEventListener('click', async () => {
+                const input = document.getElementById('join-peer-id');
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text && text.trim()) {
+                        input.value = text.trim();
+                        input.focus();
+                        setMpStatus('Kod wklejony ze schowka. Kliknij Dołącz.', 'text-emerald-400');
+                    } else {
+                        input.focus();
+                        setMpStatus('Schowek jest pusty. Skopiuj kod od hosta i kliknij ten przycisk ponownie.', 'text-amber-400');
+                    }
+                } catch (err) {
+                    input.focus();
+                    setMpStatus('Brak dostępu do schowka (przeglądarka). Kliknij w pole tekstowe i wklej kod ręcznie (Ctrl+V / przytrzymaj i wybierz Wklej).', 'text-amber-400');
+                }
+            });
+
+            // Enter w polu ID = Dołącz
+            document.getElementById('join-peer-id').addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('btn-join-room').click();
+                }
             });
 
             // Multiplayer Join Room
             document.getElementById('btn-join-room').addEventListener('click', () => {
                 const hostId = document.getElementById('join-peer-id').value.trim();
-                if (hostId) {
-                    joinMultiplayerRoom(hostId);
+                if (!hostId) {
+                    setMpStatus('Wklej najpierw ID pokoju hosta (przycisk ze schowka obok pola).', 'text-red-400');
+                    return;
                 }
+                joinMultiplayerRoom(hostId);
             });
 
             // Multiplayer Start (Host Only)
