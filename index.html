@@ -2875,7 +2875,11 @@
                     }
                 });
             } else if (data.type === 'INPUT' && GAME_STATE.isHost) {
-                // Host receives input from client
+                // Host receives input from client.
+                // ZABEZPIECZENIE: wejście musi pasować do ID przypisanego temu
+                // połączeniu - inaczej (przy zdublowanych nickach) strzał jednego
+                // gracza odpalał czołg drugiego!
+                if (conn.mpPlayerId && data.playerId !== conn.mpPlayerId) return;
                 let tank = GAME_STATE.tanks.find(t => t.id === data.playerId);
                 if (!tank) return;
                 tank.inputs.forward = data.inputs.forward || 0;
@@ -2886,19 +2890,35 @@
                     tank.inputs.aimPoint.set(data.inputs.aimPoint.x || 0, data.inputs.aimPoint.y || 0, data.inputs.aimPoint.z || 0);
                 }
             } else if (data.type === 'JOIN' && GAME_STATE.isHost) {
-                // Klient dołączył do meczu - host tworzy jego zdalny czołg
-                conn.mpPlayerId = data.id; // zapamiętaj, czyj to czołg (usuwanie po rozłączeniu)
-                if (!GAME_STATE.tanks.find(t => t.id === data.id)) {
-                    const t = new Tank(data.id, data.team || 'red', false);
+                // Klient dołączył do meczu - host tworzy jego zdalny czołg.
+                // NAJPIERW: wymuś UNIKALNĄ nazwę. ID czołgu = nick, więc dwóch
+                // graczy o tym samym nicku (np. domyślny "Czołgista_1") psuło
+                // CAŁĄ synchronizację - wejścia jednego sterowały czołgiem drugiego.
+                let joinId = String(data.id || 'Gracz');
+                let suffix = 2;
+                while (GAME_STATE.tanks.find(t => t.id === joinId)) joinId = String(data.id) + '_' + (suffix++);
+                conn.mpPlayerId = joinId; // zapamiętaj, czyj to czołg (i walidacja INPUT)
+                if (!GAME_STATE.tanks.find(t => t.id === joinId)) {
+                    const t = new Tank(joinId, data.team || 'red', false);
                     const sp = TEAM_SPAWNS[data.team] ? TEAM_SPAWNS[data.team][0] : [0, 480];
                     t.spawn(sp[0], sp[1]);
                     GAME_STATE.tanks.push(t);
+                }
+                // Jeśli nazwa była zajęta - powiedz klientowi jego nową nazwę
+                if (joinId !== data.id) {
+                    conn.send({ type: 'RENAMED', id: joinId });
                 }
             } else if (data.type === 'GAME_START' && !GAME_STATE.isHost) {
                 // Host wystartował mecz - startujemy u siebie
                 mpAssignedTeam = data.team || 'blue';
                 mpSpawnIdx = data.spawnIdx || 0;
                 startGame(data.map, true, data.night);
+            } else if (data.type === 'RENAMED' && !GAME_STATE.isHost) {
+                // Host nadał nam nową, unikalną nazwę (nasz nick był zajęty)
+                if (GAME_STATE.playerTank && data.id) {
+                    GAME_STATE.playerTank.id = data.id;
+                    setMpStatus('Twoja nazwa w meczu: ' + data.id + ' (nick był już zajęty)', 'text-amber-400');
+                }
             }
         }
 
@@ -3237,8 +3257,9 @@
             }
 
             // W multiplayer informujemy hosta o ponownym dołączeniu
+            // (używamy ID czołgu - po ewentualnej zmianie nazwy przez hosta)
             if (GAME_STATE.mode === 'MP' && !GAME_STATE.isHost && connections.length > 0) {
-                connections[0].send({ type: 'JOIN', id: nick, team: GAME_STATE.myTeam });
+                connections[0].send({ type: 'JOIN', id: tank.id, team: GAME_STATE.myTeam });
             }
         }
 
@@ -3361,6 +3382,14 @@
         window.onload = function() {
             initThreeEngine();
             setupInputListeners();
+
+            // Losowy domyślny nick - w multiplayer ID czołgu = nick, więc dwóch
+            // graczy o identycznym nicku psuło synchronizację (strzał jednego
+            // odpalał czołg drugiego). Losowy numer = zawsze unikalne ID.
+            const nickInput = document.getElementById('player-nickname');
+            if (nickInput && (nickInput.value === 'Czołgista_1' || !nickInput.value)) {
+                nickInput.value = 'Czołgista_' + Math.floor(100 + Math.random() * 900);
+            }
 
             // Menu Tab Switchers
             document.getElementById('btn-mp-tab').addEventListener('click', () => {
