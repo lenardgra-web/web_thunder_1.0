@@ -244,6 +244,15 @@
                         Stwórz Pokój (Host)
                     </button>
                 </div>
+                <div class="space-y-1">
+                    <label for="mp-team-select" class="block text-xs text-slate-400 uppercase font-semibold">Wybierz drużynę</label>
+                    <select id="mp-team-select" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-500">
+                        <option value="auto" selected>Automatycznie (wyrównaj drużyny)</option>
+                        <option value="blue">BLUE</option>
+                        <option value="red">RED</option>
+                    </select>
+                    <div id="mp-team-counts" class="text-xs text-slate-400">BLUE: 1 · RED: 0</div>
+                </div>
                 <div class="relative flex items-center justify-center my-2">
                     <span class="bg-slate-900 px-3 text-xs text-slate-500 uppercase font-semibold">lub dołącz</span>
                     <div class="absolute inset-0 flex items-center -z-10"><div class="w-full border-t border-slate-800"></div></div>
@@ -1978,15 +1987,28 @@
                     addEffect(trail, { duration: 0.3, fade: true, baseOpacity: 0.7 });
                 }
 
-                // Check Tank Hit
-                for (let tank of GAME_STATE.tanks) {
-                    if (tank.id === this.ownerId || tank.hp <= 0) continue;
-
-                    const tankBox = new THREE.Box3().setFromObject(tank.mesh);
-                    if (tankBox.containsPoint(this.position)) {
-                        this.calculateArmorImpact(tank);
-                        this.destroy();
-                        return;
+                // Check Tank Hit: testujemy cały odcinek lotu pocisku, aby szybki pocisk
+                // nie przelatywał przez czołg pomiędzy klatkami (tunneling).
+                // W multiplayerze obrażenia liczy wyłącznie host; klient dostaje HP przez SYNC.
+                if (!(GAME_STATE.mode === 'MP' && !GAME_STATE.isHost)) {
+                    const travel = this.position.clone().sub(prevPos);
+                    const travelLength = travel.length();
+                    if (travelLength > 0.0001) {
+                        const ray = new THREE.Ray(prevPos, travel.clone().normalize());
+                        for (let tank of GAME_STATE.tanks) {
+                            if (tank.id === this.ownerId || tank.hp <= 0 || tank.team === this.ownerTeam) continue;
+                            tank.mesh.updateMatrixWorld(true);
+                            const tankBox = new THREE.Box3().setFromObject(tank.mesh);
+                            tankBox.expandByScalar(0.65);
+                            const hitPoint = ray.intersectBox(tankBox, new THREE.Vector3());
+                            if (hitPoint && hitPoint.distanceTo(prevPos) <= travelLength + 0.001) {
+                                this.position.copy(hitPoint);
+                                this.mesh.position.copy(hitPoint);
+                                this.calculateArmorImpact(tank);
+                                this.destroy();
+                                return;
+                            }
+                        }
                     }
                 }
 
@@ -2729,12 +2751,35 @@
             }
         }
 
+        function getMpTeamCounts(excludeConn = null) {
+            const counts = { blue: 1, red: 0 }; // host zawsze gra w BLUE
+            connections.forEach(c => {
+                if (c === excludeConn) return;
+                if (c.mpTeam === 'blue' || c.mpTeam === 'red') counts[c.mpTeam]++;
+            });
+            return counts;
+        }
+
+        function assignBalancedTeam(requestedTeam, excludeConn = null) {
+            const counts = getMpTeamCounts(excludeConn);
+            const least = counts.blue <= counts.red ? 'blue' : 'red';
+            // Można wybrać tylko drużynę, która nie jest liczniejsza od przeciwnej.
+            if ((requestedTeam === 'blue' || requestedTeam === 'red') && counts[requestedTeam] <= counts[requestedTeam === 'blue' ? 'red' : 'blue']) {
+                return requestedTeam;
+            }
+            return least;
+        }
+
+        function updateMpTeamCountsDisplay(counts) {
+            const el = document.getElementById('mp-team-counts');
+            if (el) el.textContent = `BLUE: ${counts.blue} · RED: ${counts.red}`;
+        }
+
         function initMultiplayerHost() {
             // Reset, jeśli pokój był już tworzony
             if (peer) { try { peer.destroy(); } catch (e) {} peer = null; connections = []; }
             setMpStatus('Łączenie z serwerem PeerJS... (tworzenie pokoju)');
             peer = new Peer();
-            let nextTeam = 'red'; // host gra niebieskimi
 
             peer.on('open', id => {
                 GAME_STATE.myPeerId = id;
@@ -2753,10 +2798,11 @@
             });
 
             peer.on('connection', conn => {
-                conn.mpTeam = nextTeam;
+                conn.mpTeam = 'red';
                 conn.mpSpawnIdx = connections.length + 1;
-                nextTeam = nextTeam === 'red' ? 'blue' : 'red';
                 connections.push(conn);
+                conn.mpTeam = assignBalancedTeam('auto', conn);
+                updateMpTeamCountsDisplay(getMpTeamCounts());
 
                 conn.on('open', () => {
                     setMpStatus(`Połączono z ${connections.length} graczem(ami)! (${conn.mpTeam.toUpperCase()} dołączył)`, 'text-emerald-400');
@@ -2774,6 +2820,7 @@
                             if (ti !== -1) GAME_STATE.tanks.splice(ti, 1);
                         }
                     }
+                    updateMpTeamCountsDisplay(getMpTeamCounts());
                     setMpStatus(`Gracz rozłączony. Połączonych: ${connections.length}.`, 'text-amber-400');
                 });
                 conn.on('data', data => handleIncomingData(data, conn));
@@ -2804,6 +2851,8 @@
                     joined = true;
                     clearTimeout(joinTimeout);
                     document.getElementById('room-status-box').classList.remove('hidden');
+                    const teamChoice = document.getElementById('mp-team-select')?.value || 'auto';
+                    conn.send({ type: 'TEAM_REQUEST', team: teamChoice });
                     setMpStatus('Połączono z Hostem! Oczekiwanie na start...', 'text-emerald-400');
                 });
                 conn.on('error', () => {
@@ -2889,6 +2938,19 @@
                 if (data.inputs.aimPoint) {
                     tank.inputs.aimPoint.set(data.inputs.aimPoint.x || 0, data.inputs.aimPoint.y || 0, data.inputs.aimPoint.z || 0);
                 }
+            } else if (data.type === 'TEAM_REQUEST' && GAME_STATE.isHost) {
+                if (GAME_STATE.running) return;
+                conn.mpTeam = assignBalancedTeam(data.team, conn);
+                const counts = getMpTeamCounts();
+                updateMpTeamCountsDisplay(counts);
+                conn.send({ type: 'TEAM_ASSIGNED', team: conn.mpTeam, counts });
+                connections.forEach(c => { if (c.open) c.send({ type: 'LOBBY_TEAMS', counts }); });
+            } else if (data.type === 'TEAM_ASSIGNED' && !GAME_STATE.isHost) {
+                mpAssignedTeam = data.team || 'red';
+                updateMpTeamCountsDisplay(data.counts || { blue: 1, red: 0 });
+                setMpStatus('Przydzielona drużyna: ' + mpAssignedTeam.toUpperCase(), 'text-emerald-400');
+            } else if (data.type === 'LOBBY_TEAMS' && !GAME_STATE.isHost) {
+                updateMpTeamCountsDisplay(data.counts || { blue: 1, red: 0 });
             } else if (data.type === 'JOIN' && GAME_STATE.isHost) {
                 // Klient dołączył do meczu - host tworzy jego zdalny czołg.
                 // NAJPIERW: wymuś UNIKALNĄ nazwę. ID czołgu = nick, więc dwóch
@@ -2899,8 +2961,9 @@
                 while (GAME_STATE.tanks.find(t => t.id === joinId)) joinId = String(data.id) + '_' + (suffix++);
                 conn.mpPlayerId = joinId; // zapamiętaj, czyj to czołg (i walidacja INPUT)
                 if (!GAME_STATE.tanks.find(t => t.id === joinId)) {
-                    const t = new Tank(joinId, data.team || 'red', false);
-                    const sp = TEAM_SPAWNS[data.team] ? TEAM_SPAWNS[data.team][0] : [0, 480];
+                    const assignedTeam = conn.mpTeam || 'red';
+                    const t = new Tank(joinId, assignedTeam, false);
+                    const sp = TEAM_SPAWNS[assignedTeam] ? TEAM_SPAWNS[assignedTeam][0] : [0, 480];
                     t.spawn(sp[0], sp[1]);
                     GAME_STATE.tanks.push(t);
                 }
@@ -3461,6 +3524,15 @@
                     return;
                 }
                 joinMultiplayerRoom(hostId);
+            });
+
+            // Zmiana preferencji drużyny w lobby - host zatwierdza ją z auto-balansowaniem.
+            document.getElementById('mp-team-select').addEventListener('change', () => {
+                if (!GAME_STATE.isHost && connections.length > 0 && connections[0].open) {
+                    connections[0].send({ type: 'TEAM_REQUEST', team: document.getElementById('mp-team-select').value });
+                } else if (GAME_STATE.isHost) {
+                    setMpStatus('Host pozostaje w drużynie BLUE.', 'text-cyan-400');
+                }
             });
 
             // Multiplayer Start (Host Only)
