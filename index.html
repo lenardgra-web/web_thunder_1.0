@@ -1999,7 +1999,7 @@
                             if (tank.id === this.ownerId || tank.hp <= 0 || tank.team === this.ownerTeam) continue;
                             tank.mesh.updateMatrixWorld(true);
                             const tankBox = new THREE.Box3().setFromObject(tank.mesh);
-                            tankBox.expandByScalar(0.65);
+                            tankBox.expandByScalar(1.2);
                             const hitPoint = ray.intersectBox(tankBox, new THREE.Vector3());
                             if (hitPoint && hitPoint.distanceTo(prevPos) <= travelLength + 0.001) {
                                 this.position.copy(hitPoint);
@@ -2054,24 +2054,15 @@
             }
 
             calculateArmorImpact(targetTank) {
-                const impactDir = this.velocity.clone().normalize();
-                const tankNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(targetTank.mesh.quaternion);
+                const damage = 35 + Math.floor(Math.random() * 20);
 
-                const cosTheta = Math.abs(impactDir.dot(tankNormal));
-                const impactAngleDeg = THREE.MathUtils.radToDeg(Math.acos(cosTheta));
+                targetTank.takeDamage(damage, this.ownerId);
 
-                if (impactAngleDeg > 70) {
-                    triggerHitNotification("RYKOSZET!", "text-amber-400");
-                    createSparkImpact(this.position);
-                } else {
-                    const damage = Math.floor(35 + Math.random() * 20);
-                    targetTank.takeDamage(damage, this.ownerId);
-
-                    if (GAME_STATE.playerTank && this.ownerId === GAME_STATE.playerTank.id) {
-                        triggerHitNotification(`TRAFIENIE! -${damage} HP`, "text-red-500");
-                    }
-                    createExplosion(this.position, 1.5);
+                if (GAME_STATE.playerTank && this.ownerId === GAME_STATE.playerTank.id) {
+                    triggerHitNotification(`TRAFIENIE! -${damage} HP`, "text-red-500");
                 }
+
+                createExplosion(this.position, 1.5);
             }
 
             destroy() {
