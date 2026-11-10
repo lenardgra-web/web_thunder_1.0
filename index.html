@@ -2770,13 +2770,14 @@
             // Reset, jeśli pokój był już tworzony
             if (peer) { try { peer.destroy(); } catch (e) {} peer = null; connections = []; }
             setMpStatus('Łączenie z serwerem PeerJS... (tworzenie pokoju)');
-            peer = new Peer();
+            const roomCode = String(Math.floor(100000 + Math.random() * 900000));
+            peer = new Peer('tt' + roomCode);
 
             peer.on('open', id => {
                 GAME_STATE.myPeerId = id;
                 GAME_STATE.isHost = true;
                 GAME_STATE.myTeam = 'blue';
-                document.getElementById('current-peer-id').innerText = id;
+                document.getElementById('current-peer-id').innerText = roomCode;
                 document.getElementById('room-status-box').classList.remove('hidden');
                 document.getElementById('btn-start-mp-game').classList.remove('hidden');
                 setMpStatus('Pokój gotowy! Wyślij koledze ID (przycisk Kopiuj) i czekaj na dołączenie...', 'text-emerald-400');
@@ -2896,31 +2897,45 @@
                 // Client receives state from host
                 GAME_STATE.scores = data.scores;
                 data.tanks.forEach(tData => {
-                    if (GAME_STATE.playerTank && tData.id === GAME_STATE.playerTank.id) return;
                     let tank = GAME_STATE.tanks.find(t => t.id === tData.id);
                     if (!tank) {
-                        // Nowy zdalny gracz - utwórz jego czołg
                         tank = new Tank(tData.id, tData.team, false);
                         tank.spawn(tData.pos[0], tData.pos[2]);
                         GAME_STATE.tanks.push(tank);
                     }
-                    if (tank !== GAME_STATE.playerTank) {
+
+                    const isLocalPlayer = tank === GAME_STATE.playerTank;
+                    const respawned = isLocalPlayer && tank.hp <= 0 && tData.hp > 0;
+
+                    if (!isLocalPlayer || respawned) {
                         tank.position.set(tData.pos[0], tData.pos[1], tData.pos[2]);
                         tank.hullRotation = tData.rot;
                         tank.turretRotation = tData.turretRot;
                         tank.turretGroup.rotation.y = tank.turretRotation;
                         tank.barrelPitch = tData.pitch || 0;
                         tank.barrelPivot.rotation.x = -tank.barrelPitch;
-                        tank.hp = tData.hp;
                     }
+
+                    tank.hp = tData.hp;
                 });
+
+                const ownSync = GAME_STATE.playerTank
+                    ? data.tanks.find(t => t.id === GAME_STATE.playerTank.id)
+                    : null;
+
+                if (GAME_STATE.playerTank && !ownSync && GAME_STATE.playerTank.hp > 0) {
+                    GAME_STATE.playerTank.hp = 0;
+                    showDeathScreen(null);
+                }
             } else if (data.type === 'INPUT' && GAME_STATE.isHost) {
                 // Host receives input from client.
                 // ZABEZPIECZENIE: wejście musi pasować do ID przypisanego temu
                 // połączeniu - inaczej (przy zdublowanych nickach) strzał jednego
                 // gracza odpalał czołg drugiego!
-                if (conn.mpPlayerId && data.playerId !== conn.mpPlayerId) return;
-                let tank = GAME_STATE.tanks.find(t => t.id === data.playerId);
+                // ID z połączenia jest nadrzędne - zapobiega to przejęciu sterowania
+                // cudzym czołgiem przy takich samych nickach graczy.
+                const controlledId = conn.mpPlayerId || data.playerId;
+                let tank = GAME_STATE.tanks.find(t => t.id === controlledId);
                 if (!tank) return;
                 tank.inputs.forward = data.inputs.forward || 0;
                 tank.inputs.turn = data.inputs.turn || 0;
@@ -3509,12 +3524,15 @@
 
             // Multiplayer Join Room
             document.getElementById('btn-join-room').addEventListener('click', () => {
-                const hostId = document.getElementById('join-peer-id').value.trim();
-                if (!hostId) {
-                    setMpStatus('Wklej najpierw ID pokoju hosta (przycisk ze schowka obok pola).', 'text-red-400');
-                    return;
+                const rawCode = document.getElementById('join-peer-id').value.trim();
+                const digits = rawCode.replace(/\D/g, '');
+                if (digits.length === 6) {
+                    joinMultiplayerRoom('tt' + digits);
+                } else if (rawCode) {
+                    joinMultiplayerRoom(rawCode);
+                } else {
+                    setMpStatus('Wpisz 6-cyfrowy kod pokoju hosta.', 'text-red-400');
                 }
-                joinMultiplayerRoom(hostId);
             });
 
             // Zmiana preferencji drużyny w lobby - host zatwierdza ją z auto-balansowaniem.
