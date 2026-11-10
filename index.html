@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Thunder Tanks 3D - Singleplayer & Multiplayer</title>
+    <title>Web Thunder - Singleplayer & Multiplayer</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -103,6 +103,40 @@
             height: 100%;
         }
 
+        
+        /* STAŁY rozmiar czcionki w lunecie — niezależny od poziomu zoomu */
+        #scope-drop-marks text {
+            font-size: 11px !important;
+            font-family: monospace !important;
+        }
+        #scope-zoom-label {
+            font-size: 12px !important;
+        }
+        /* ATGM na PC: mały przycisk, aby nie zasłaniał widoku */
+        #btn-atgm {
+            font-size: 12px !important;
+            width: auto !important;
+            height: auto !important;
+            border-radius: 8px !important;
+        }
+        /* ATGM na telefonie/tablecie: duży, wygodny przycisk */
+        body.is-touch #btn-atgm {
+            left: auto !important;
+            right: 20px !important;
+            bottom: 150px !important;
+            width: 82px !important;
+            height: 82px !important;
+            border-radius: 50% !important;
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            line-height: 1.15 !important;
+            border-width: 2px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+        }
+
         /* ===== Wsparcie dotyku / telefonów ===== */
         html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
         .touch-only { display: none; }
@@ -174,7 +208,7 @@
             <!-- Header -->
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-500 uppercase">
-                    Thunder Tanks 3D
+                    Web Thunder
                 </h1>
                 <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest font-semibold">Symulator Balistyki i Walki Pancernej • Leopard 2A7</p>
             </div>
@@ -300,7 +334,7 @@
     </div>
 
     <!-- EKRAN ŚMIERCI I ODRADZANIA -->
-    <div id="death-screen" class="hidden absolute inset-0 z-[70] flex items-center justify-center bg-red-950/70 backdrop-blur-md">
+    <div id="death-screen" class="hidden absolute inset-0 z-[70] flex items-center justify-center bg-red-950/70 backdrop-blur-md" style="pointer-events:auto; cursor:default;">
         <div class="text-center bg-slate-900/90 border border-red-900/60 rounded-2xl px-12 py-8 shadow-2xl">
             <h2 class="text-4xl font-black uppercase tracking-widest text-red-500 drop-shadow-lg">Zniszczony</h2>
             <p id="death-killer" class="text-slate-300 mt-3 font-semibold">Zniszczył Cię: Wróg_1</p>
@@ -2044,6 +2078,9 @@
 
                 this.atgmCount--;
                 this.missileCooldown = 6.0;
+                // Lekki odrzut lufy bez kołysania kadłuba — nie psuje celowania w lunecie.
+                this.recoil = Math.min(0.15, (this.recoil || 0) + 0.12);
+                // bez this.kick — ATGM nie powinien rzucać pojazdem
 
                 const origin = new THREE.Vector3();
                 this.muzzlePoint.getWorldPosition(origin);
@@ -2732,23 +2769,9 @@
             flash.position.copy(pos);
             addEffect(flash, { duration: 0.18, grow: 1.2, fade: true, baseOpacity: 1, baseScale: 5 });
 
-            // dym ze strumienia gazów wylatujący za wyrzutnię
-            for (let i = 0; i < 10; i++) {
-                const p = pos.clone().addScaledVector(d, -rnd(0.5, 1.7));
-                const v = d.clone().multiplyScalar(-rnd(6, 16)).add(new THREE.Vector3(rnd(-2, 2), rnd(0.2, 1.4), rnd(-2, 2)));
-                smokePuff(p, rnd(0.5, 0.9), 0xdadada, 0.7, rnd(2.0, 3.4), v, 5, 0.93);
-            }
-
-            // pył zdmuchnięty z ziemi
-            const gy = getTerrainHeight(pos.x, pos.z, GAME_STATE.mapName);
-            if (pos.y - gy < 9) {
-                for (let i = 0; i < 5; i++) {
-                    const a = Math.random() * Math.PI * 2;
-                    smokePuff(new THREE.Vector3(pos.x, gy + 0.4, pos.z), rnd(0.6, 1.0), 0xc2ad7e, 0.45, rnd(1.0, 1.8),
-                        new THREE.Vector3(Math.cos(a) * rnd(3, 7), rnd(0.5, 1.5), Math.sin(a) * rnd(3, 7)), 3, 0.93);
-                }
-            }
-            shakeIntensity = Math.min(0.25, shakeIntensity + 0.06);
+            // Minimalny wstrząs — ATGM ma mały odrzut; w lunecie prawie zerowy, by dało się celować.
+            const scopeLaunch = cameraMode === 'SCOPE';
+            shakeIntensity = Math.min(scopeLaunch ? 0.02 : 0.05, shakeIntensity + (scopeLaunch ? 0.008 : 0.018));
             playMissileSound(pos);
         }
 
@@ -3036,10 +3059,11 @@
             });
             window.addEventListener('keyup', e => {
                 keys[e.code] = false;
-                // Puszczenie S/strzałki w dół wyłącza bieg wsteczny
+                // Puszczenie S/strzałki w dół wyłącza bieg wsteczny,
+                // ale zachowuje czas pierwszego stuknięcia, aby drugie S
+                // w ciągu 0,4 s nadal włączało bieg wsteczny.
                 if ((e.code === 'KeyS' || e.code === 'ArrowDown') && !keys['KeyS'] && !keys['ArrowDown']) {
                     reverseEngaged = false;
-                    lastBrakeTap = 0;
                 }
             });
 
@@ -3075,6 +3099,11 @@
 
             window.addEventListener('mousedown', e => {
                 if (document.body.classList.contains('is-touch')) return;
+                // Ekran śmierci / martwy gracz: nie przejmuj kursora ani nie strzelaj — przyciski muszą działać.
+                const deathVisible = document.getElementById('death-screen') &&
+                    !document.getElementById('death-screen').classList.contains('hidden');
+                const playerDead = !GAME_STATE.playerTank || GAME_STATE.playerTank.hp <= 0;
+                if (deathVisible || playerDead) return;
                 if (e.button === 0 && GAME_STATE.running && !GAME_STATE.paused) {
                     if (!isPointerLocked) {
                         document.body.requestPointerLock();
@@ -3098,10 +3127,12 @@
             document.addEventListener('pointerlockchange', () => {
                 isPointerLocked = document.pointerLockElement === document.body;
                 // Utrata pointer lock (np. ESC) w trakcie gry otwiera menu pauzy,
-                // ALE NIE gdy gracz jest martwy - wtedy widoczny jest ekran śmierci
-                // i jego kliknięcie "Odrodź się" nie może być blokowane przez pauzę.
+                // ALE NIE gdy gracz jest martwy / widoczny ekran śmierci.
+                const deathVisible = document.getElementById('death-screen') &&
+                    !document.getElementById('death-screen').classList.contains('hidden');
                 if (GAME_STATE.running && !GAME_STATE.paused && !isPointerLocked &&
                     !document.body.classList.contains('is-touch') &&
+                    !deathVisible &&
                     !(GAME_STATE.playerTank && GAME_STATE.playerTank.hp <= 0)) {
                     togglePause(true);
                 }
@@ -3242,10 +3273,21 @@
                 if (cameraMode === 'SCOPE') setScopeZoom(scopeZoomIdx - 1);
             });
 
-            // Menu pauzy i odrodzenie
+            // Menu pauzy i odrodzenie (pointerdown + stopPropagation — unikamy kradzieży pointer lock)
             document.getElementById('btn-pause-touch').addEventListener('click', () => togglePause());
-            document.getElementById('btn-respawn').addEventListener('click', respawnPlayer);
-            document.getElementById('btn-death-exit').addEventListener('click', () => stopGame());
+            const bindDeathBtn = (id, fn) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const handler = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fn();
+                };
+                el.addEventListener('pointerdown', handler);
+                el.addEventListener('click', handler);
+            };
+            bindDeathBtn('btn-respawn', respawnPlayer);
+            bindDeathBtn('btn-death-exit', () => stopGame());
             document.getElementById('btn-resume').addEventListener('click', () => togglePause(false));
             document.getElementById('btn-exit-menu').addEventListener('click', () => stopGame());
         }
@@ -3395,9 +3437,10 @@
                 player.inputs.aimPoint.copy(camera.position).add(barrelDir.clone().multiplyScalar(300));
             }
 
-            // Wstrząs kamery (wystrzały, eksplozje)
+            // Wstrząs kamery (wystrzały, eksplozje) — w lunecie mocno stłumiony, żeby dało się prowadzić ATGM
             if (shakeIntensity > 0.003) {
-                const s = shakeIntensity;
+                const scopeDamp = cameraMode === 'SCOPE' ? 0.22 : 1.0;
+                const s = shakeIntensity * scopeDamp;
                 camera.position.x += (Math.random() - 0.5) * s * 0.9;
                 camera.position.y += (Math.random() - 0.5) * s * 0.7;
                 camera.position.z += (Math.random() - 0.5) * s * 0.9;
@@ -3614,9 +3657,21 @@
                     tank.hp = tData.hp;
                 });
                 const ownSync = GAME_STATE.playerTank ? data.tanks.find(t => t.id === GAME_STATE.playerTank.id) : null;
+                // Host może jeszcze nie otrzymać/obsłużyć wiadomości JOIN po starcie meczu.
+                // Wtedy nie wolno zabijać lokalnego gracza — ponawiamy rejestrację czołgu.
                 if (GAME_STATE.playerTank && !ownSync && GAME_STATE.playerTank.hp > 0) {
-                    GAME_STATE.playerTank.hp = 0;
-                    showDeathScreen(null);
+                    const now = performance.now();
+                    if (!handleIncomingData._lastJoinRequest || now - handleIncomingData._lastJoinRequest > 1000) {
+                        handleIncomingData._lastJoinRequest = now;
+                        if (connections.length > 0 && connections[0].open) {
+                            connections[0].send({
+                                type: 'JOIN',
+                                id: GAME_STATE.playerTank.id,
+                                team: GAME_STATE.myTeam,
+                                vehicle: GAME_STATE.playerTank.vehicleType
+                            });
+                        }
+                    }
                 }
             } else if (data.type === 'INPUT' && GAME_STATE.isHost) {
                 // Host receives input from client.
@@ -3975,7 +4030,10 @@
             document.getElementById('death-screen').classList.add('hidden');
             document.getElementById('main-menu').classList.remove('hidden');
             document.body.classList.remove('in-game');
-            if (document.pointerLockElement) document.exitPointerLock();
+            try {
+                if (document.pointerLockElement) document.exitPointerLock();
+            } catch (err) {}
+            isPointerLocked = false;
         }
 
         /* Ekran śmierci z automatycznym odrodzeniem */
@@ -3987,7 +4045,17 @@
             killer.innerText = killerName ? `Zniszczył Cię: ${killerName}` : 'Zostałeś zniszczony';
             el.classList.remove('hidden');
             stopVehicleSounds();
-            if (document.pointerLockElement) document.exitPointerLock();
+            // Zwolnij kursor i zablokuj strzał — inaczej klik w przycisk ponownie blokuje pointer lock.
+            if (GAME_STATE.playerTank) {
+                GAME_STATE.playerTank.inputs.fire = false;
+                GAME_STATE.playerTank.inputs.missile = false;
+                GAME_STATE.playerTank.inputs.forward = 0;
+                GAME_STATE.playerTank.inputs.turn = 0;
+            }
+            try {
+                if (document.pointerLockElement) document.exitPointerLock();
+            } catch (err) {}
+            isPointerLocked = false;
 
             let count = 8;
             const cd = document.getElementById('respawn-count');
@@ -4005,8 +4073,16 @@
         }
 
         function respawnPlayer() {
-            if (!GAME_STATE.running) return;
-            if (GAME_STATE.playerTank && GAME_STATE.playerTank.hp > 0) return;
+            if (!GAME_STATE.running) {
+                clearInterval(deathTimer);
+                document.getElementById('death-screen').classList.add('hidden');
+                return;
+            }
+            if (GAME_STATE.playerTank && GAME_STATE.playerTank.hp > 0) {
+                clearInterval(deathTimer);
+                document.getElementById('death-screen').classList.add('hidden');
+                return;
+            }
             clearInterval(deathTimer);
             document.getElementById('death-screen').classList.add('hidden');
 
@@ -4230,7 +4306,11 @@
                 if (desired.lengthSq() > 1) {
                     const wantedDir = desired.normalize();
                     const currentDir = this.velocity.clone().normalize();
-                    const maxTurn = 1.6 * delta;
+                    // Limit przeciążeń (maxTurn): w lunecie delikatniejsze, precyzyjne naprowadzanie;
+                    // poza lunetą szybsze korekty, ale nadal ograniczone G.
+                    const ownerIsPlayerScope = owner && owner === GAME_STATE.playerTank && cameraMode === 'SCOPE';
+                    const turnRate = ownerIsPlayerScope ? 0.85 : 1.35; // rad/s
+                    const maxTurn = turnRate * delta;
                     const angle = currentDir.angleTo(wantedDir);
 
                     if (angle > 0.0001) {
@@ -4400,17 +4480,26 @@ function animate() {
             if (document.getElementById('btn-atgm')) return;
             const button = document.createElement('button');
             button.id = 'btn-atgm';
+            button.type = 'button';
             button.innerText = 'ATGM 4 [G]';
-            button.style.cssText = 'display:none;position:fixed;left:16px;bottom:16px;z-index:40;padding:7px 10px;border-radius:8px;background:rgba(4,120,87,.85);color:white;font-size:12px;font-weight:700;border:1px solid #34d399;box-shadow:0 2px 8px rgba(0,0,0,.4);';
-            button.addEventListener('click', () => {
+            button.style.cssText = 'display:none;position:fixed;left:16px;bottom:16px;z-index:60;padding:6px 10px;border-radius:8px;background:rgba(4,120,87,.85);color:#fff;font-size:12px;font-weight:700;border:1px solid #34d399;box-shadow:0 2px 8px rgba(0,0,0,.4);touch-action:manipulation;user-select:none;-webkit-user-select:none;';
+
+            const fireMissile = () => {
                 const player = GAME_STATE.playerTank;
                 if (player && player.vehicleType === 'bmp' && player.hp > 0) {
                     player.inputs.missile = true;
                     setTimeout(() => {
                         if (GAME_STATE.playerTank) GAME_STATE.playerTank.inputs.missile = false;
-                    }, 70);
+                    }, 90);
                 }
+            };
+
+            button.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fireMissile();
             });
+
             document.body.appendChild(button);
         }
 
