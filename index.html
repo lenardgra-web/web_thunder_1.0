@@ -119,19 +119,21 @@
             height: auto !important;
             border-radius: 8px !important;
         }
-        /* ATGM na telefonie/tablecie: duży, wygodny przycisk */
+        /* ATGM na telefonie: mały przycisk w rogu, nie zasłania celowania.
+           Widoczność steruje JS (bez display:!important, które wymuszało przycisk zawsze). */
         body.is-touch #btn-atgm {
             left: auto !important;
-            right: 20px !important;
-            bottom: 150px !important;
-            width: 82px !important;
-            height: 82px !important;
+            right: calc(18px + env(safe-area-inset-right, 0px)) !important;
+            bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
+            width: 54px !important;
+            height: 54px !important;
             border-radius: 50% !important;
-            font-size: 15px !important;
+            font-size: 11px !important;
             font-weight: 800 !important;
-            line-height: 1.15 !important;
+            line-height: 1.1 !important;
             border-width: 2px !important;
-            display: flex !important;
+            padding: 0 !important;
+            z-index: 35 !important;
             align-items: center !important;
             justify-content: center !important;
             text-align: center !important;
@@ -144,24 +146,28 @@
         body.is-touch .desktop-only { display: none; }
         #touch-controls { position: fixed; inset: 0; z-index: 20; pointer-events: none; touch-action: none; display: none; }
         body.is-touch.in-game #touch-controls { display: block; }
-        #joy-zone { position: absolute; left: 0; bottom: 0; width: 45%; height: 70%; pointer-events: auto; touch-action: none; }
-        #aim-zone { position: absolute; right: 0; top: 0; width: 55%; height: 100%; pointer-events: auto; touch-action: none; }
+        /* Drążek tylko w dolnym lewym rogu — reszta ekranu zostaje na widok. */
+        #joy-zone { position: absolute; left: 0; bottom: 0; width: 34%; height: 46%; pointer-events: auto; touch-action: none; z-index: 2; }
+        /* Celowanie: prawa strona, ale nie nachodzi na dolny rząd przycisków. */
+        #aim-zone { position: absolute; right: 0; top: 0; width: 62%; height: calc(100% - 132px); pointer-events: auto; touch-action: none; z-index: 2; }
         #joy-base { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.35);
             background: rgba(255,255,255,0.08); transform: translate(-50%, -50%); pointer-events: none; opacity: 0.55; }
         #joy-base.active { opacity: 1; }
         #joy-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%;
             background: rgba(255,255,255,0.45); border: 2px solid rgba(255,255,255,0.8); transform: translate(-50%, -50%); }
-        .t-btn { position: absolute; pointer-events: auto; touch-action: none; border-radius: 50%; display: flex; align-items: center;
+        .t-btn { position: absolute; pointer-events: auto; touch-action: manipulation; border-radius: 50%; display: flex; align-items: center;
             justify-content: center; font-weight: 800; color: #fff; border: 2px solid rgba(255,255,255,0.6);
-            user-select: none; -webkit-user-select: none; font-family: inherit; }
-        #btn-fire { right: calc(24px + env(safe-area-inset-right, 0px)); bottom: 24px; width: 96px; height: 96px;
-            background: rgba(220,38,38,0.55); font-size: 14px; letter-spacing: 0.05em; }
+            user-select: none; -webkit-user-select: none; font-family: inherit; z-index: 30; }
+        /* Przyciski w narożnikach, małe, żeby nie zasłaniały środka ekranu. */
+        #btn-fire { right: calc(14px + env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 72px; height: 72px;
+            background: rgba(220,38,38,0.55); font-size: 12px; letter-spacing: 0.04em; z-index: 32; }
         #btn-fire.pressed { background: rgba(239,68,68,0.9); }
-        #btn-scope { right: calc(138px + env(safe-area-inset-right, 0px)); bottom: 40px; width: 64px; height: 64px;
-            background: rgba(15,23,42,0.6); font-size: 10px; }
-        #btn-brake { right: calc(138px + env(safe-area-inset-right, 0px)); bottom: 118px; width: 64px; height: 64px;
-            background: rgba(51,65,85,0.6); border-color: rgba(148,163,184,0.7); font-size: 9px; }
+        #btn-scope { right: calc(96px + env(safe-area-inset-right, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px;
+            background: rgba(15,23,42,0.72); font-size: 9px; z-index: 32; }
+        #btn-brake { left: calc(16px + env(safe-area-inset-left, 0px)); bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px;
+            background: rgba(51,65,85,0.72); border-color: rgba(148,163,184,0.7); font-size: 8px; z-index: 32; }
         #btn-brake.pressed { background: rgba(100,116,139,0.92); }
+        #scope-touch-zoom { z-index: 33; pointer-events: auto; }
         body.is-touch #hud-diag { bottom: auto; top: 10px; left: 62px; min-width: 150px; padding: 8px; gap: 6px; }
         body.is-touch #hud-diag .hud-extra { display: none; }
         body.is-touch #hud-minimap { bottom: auto; top: 10px; right: 10px; padding: 4px; }
@@ -414,7 +420,7 @@
         </div>
 
         <!-- Przycisk pauzy (tylko dotyk) -->
-        <button id="btn-pause-touch" class="touch-only absolute top-2.5 left-2.5 z-20 w-11 h-11 flex items-center justify-center bg-slate-950/70 border border-slate-700 text-white text-base rounded-full pointer-events-auto active:scale-95 transition" type="button" aria-label="Pauza"><i class="fa-solid fa-pause"></i></button>
+        <button id="btn-pause-touch" class="touch-only absolute top-2.5 left-2.5 z-40 w-11 h-11 flex items-center justify-center bg-slate-950/70 border border-slate-700 text-white text-base rounded-full pointer-events-auto active:scale-95 transition" type="button" aria-label="Pauza"><i class="fa-solid fa-pause"></i></button>
 
         <!-- Center Notification Center -->
         <div id="hit-notification" class="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-0 transition-opacity duration-200">
@@ -432,9 +438,9 @@
         <button id="btn-brake" class="t-btn" type="button">HAMULEC</button>
         <button id="btn-fire" class="t-btn" type="button">OGIEŃ</button>
         <!-- Zoom lunety (tylko tryb lunety, ekran dotykowy) -->
-        <div id="scope-touch-zoom" style="display:none; position:absolute; right:24px; top:38%; flex-direction:column; gap:10px;">
-            <button id="btn-zoom-in" class="t-btn" type="button" style="position:static; width:56px; height:56px; background:rgba(15,23,42,0.8); font-size:20px;">+</button>
-            <button id="btn-zoom-out" class="t-btn" type="button" style="position:static; width:56px; height:56px; background:rgba(15,23,42,0.8); font-size:20px;">&#8722;</button>
+        <div id="scope-touch-zoom" style="display:none; position:absolute; left:calc(12px + env(safe-area-inset-left, 0px)); top:46%; flex-direction:column; gap:8px; z-index:33; pointer-events:auto;">
+            <button id="btn-zoom-in" class="t-btn" type="button" style="position:static; width:46px; height:46px; background:rgba(15,23,42,0.8); font-size:18px;">+</button>
+            <button id="btn-zoom-out" class="t-btn" type="button" style="position:static; width:46px; height:46px; background:rgba(15,23,42,0.8); font-size:18px;">&#8722;</button>
         </div>
     </div>
 
@@ -1763,11 +1769,44 @@
                 this.position.set(x, getTerrainHeight(x, z, GAME_STATE.mapName), z);
                 this.speed = 0;
                 this.hp = this.maxHp;
+                this.dead = false;
+                this.mesh.visible = true;
                 this.mesh.position.copy(this.position);
             }
 
             update(delta) {
-                if (this.hp <= 0) return;
+                if (this.hp <= 0) {
+                    this.dead = true;
+                    this.mesh.visible = false;
+                    return;
+                }
+
+                // Host nie symuluje fizyki cudzego czołgu — bierze pozę od gracza,
+                // żeby lufa i trafienia zgadzały się z tym, co gracz widzi.
+                const remoteOnHost = GAME_STATE.mode === 'MP' && GAME_STATE.isHost && this !== GAME_STATE.playerTank && !this.isAI;
+                if (remoteOnHost) {
+                    if (this.reloadTimer > 0) this.reloadTimer -= delta;
+                    if (this.vehicleType === 'bmp') this.missileCooldown = Math.max(0, this.missileCooldown - delta);
+                    if (this.netPose) {
+                        const p = this.netPose;
+                        this.position.set(p.x, p.y, p.z);
+                        this.hullRotation = p.rot || 0;
+                        this.turretRotation = p.turret || 0;
+                        this.barrelPitch = p.pitch || 0;
+                        this.mesh.position.copy(this.position);
+                        if (p.qw != null) this.mesh.quaternion.set(p.qx, p.qy, p.qz, p.qw);
+                        this.turretGroup.rotation.y = this.turretRotation;
+                        this.barrelPivot.rotation.x = -this.barrelPitch;
+                        this.mesh.updateMatrixWorld(true);
+                    }
+                    if (this.vehicleType === 'bmp') {
+                        if (this.inputs.fire && this.reloadTimer <= 0) this.fireAutocannon();
+                        if (this.inputs.missile && this.atgmCount > 0 && this.missileCooldown <= 0) this.fireATGM();
+                    } else if (this.inputs.fire && this.reloadTimer <= 0) {
+                        this.fireShell();
+                    }
+                    return;
+                }
 
                 if (this.reloadTimer > 0) {
                     this.reloadTimer -= delta;
@@ -2041,6 +2080,7 @@
 
                 GAME_STATE.shells.push(new BallisticShell(origin, dir, this.id, this.team, M109_SHELL));
                 createHowitzerBlast(origin, dir, this);
+                relayShot('howitzer', origin, dir, this.id, this.team);
             }
 
             fireShell() {
@@ -2058,6 +2098,7 @@
                 GAME_STATE.shells.push(shell);
 
                 createMuzzleFlash(origin, dir);
+                relayShot('shell', origin, dir, this.id, this.team);
             }
 
             fireAutocannon() {
@@ -2071,6 +2112,7 @@
 
                 GAME_STATE.autoShells.push(new AutoCannonShell(origin, dir, this.id, this.team));
                 createMuzzleFlash(origin, dir);
+                relayShot('auto', origin, dir, this.id, this.team);
             }
 
             fireATGM() {
@@ -2091,6 +2133,7 @@
                 const missile = new ATGM(origin, dir, this.id, this.team, aimPoint, this.id);
                 GAME_STATE.atgms.push(missile);
                 createATGMLaunch(origin, dir);
+                relayShot('atgm', origin, dir, this.id, this.team);
 
                 if (this === GAME_STATE.playerTank) {
                     triggerHitNotification('ATGM: RĘCZNE NAPROWADZANIE', 'text-amber-400');
@@ -2098,28 +2141,43 @@
             }
 
             takeDamage(amount, hitterId) {
+                // Obrażenia liczy wyłącznie host. Klient dostaje HP wiadomością HP/SYNC.
+                // Lokalne pociski klienta nie mogą nadpisywać życia — wcześniej
+                // zdejmowały HP, a kolejny SYNC przywracał 100% i "niezniszczalność".
+                if (GAME_STATE.mode === 'MP' && !GAME_STATE.isHost) return;
+                if (this.dead || this.hp <= 0) return;
                 this.hp = Math.max(0, this.hp - amount);
+                this.lastKiller = hitterId || this.lastKiller || '';
                 if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.dead = true;
+                    this.mesh.visible = false;
                     createExplosion(this.position, 2.2);
                     if (this.team === 'blue') GAME_STATE.scores.red += 1;
                     else GAME_STATE.scores.blue += 1;
 
-                    // Usuwanie zniszczonego czołgu z pola bitwy
-                    scene.remove(this.mesh);
-                    const idx = GAME_STATE.tanks.indexOf(this);
-                    if (idx !== -1) {
-                        GAME_STATE.tanks.splice(idx, 1);
+                    if (GAME_STATE.mode !== 'MP') {
+                        scene.remove(this.mesh);
+                        const idx = GAME_STATE.tanks.indexOf(this);
+                        if (idx !== -1) GAME_STATE.tanks.splice(idx, 1);
                     }
 
-                    // Bot odradza się po chwili na spawnie swojej drużyny
                     if (this.isAI && GAME_STATE.mode === 'SP') {
                         botRespawnQueue.push({ name: this.id, team: this.team, timer: 6 + Math.random() * 5 });
                     }
 
-                    // Ekran śmierci z odrodzeniem dla gracza
                     if (this === GAME_STATE.playerTank) {
                         showDeathScreen(hitterId);
                     }
+                }
+                if (GAME_STATE.mode === 'MP' && GAME_STATE.isHost) {
+                    mpBroadcast({
+                        type: 'HP',
+                        id: this.id,
+                        hp: this.hp,
+                        killer: this.lastKiller || '',
+                        scores: GAME_STATE.scores
+                    });
                 }
             }
 
@@ -2657,7 +2715,10 @@
             playCannonSound(pos, true);
         }
 
-        function createExplosion(pos, scale = 3.0) {
+        function createExplosion(pos, scale = 3.0, fromNet) {
+            if (!fromNet && GAME_STATE.mode === 'MP' && GAME_STATE.isHost && pos) {
+                mpBroadcast({ type: 'FX', kind: 'explosion', x: pos.x, y: pos.y, z: pos.z, scale: scale || 1 });
+            }
             // Kula ognia
             const fire = new THREE.Mesh(
                 new THREE.SphereGeometry(1.3 * scale, 14, 14),
@@ -3219,24 +3280,31 @@
 
             fireButton.addEventListener('pointerdown', e => {
                 e.preventDefault();
-                if (GAME_STATE.playerTank) GAME_STATE.playerTank.inputs.fire = true;
+                e.stopPropagation();
+                try { fireButton.setPointerCapture(e.pointerId); } catch (err) {}
+                if (GAME_STATE.playerTank && GAME_STATE.playerTank.hp > 0) GAME_STATE.playerTank.inputs.fire = true;
                 fireButton.classList.add('pressed');
             });
-            const releaseFire = () => {
+            const releaseFire = (e) => {
+                if (e && fireButton.hasPointerCapture && e.pointerId != null && !fireButton.hasPointerCapture(e.pointerId) && e.type === 'pointerup') {
+                    /* nadal puszczamy */
+                }
                 if (GAME_STATE.playerTank) GAME_STATE.playerTank.inputs.fire = false;
                 fireButton.classList.remove('pressed');
             };
             fireButton.addEventListener('pointerup', releaseFire);
             fireButton.addEventListener('pointercancel', releaseFire);
-            fireButton.addEventListener('pointerleave', releaseFire);
-            scopeButton.addEventListener('click', () => {
-                if (!GAME_STATE.paused) toggleCameraMode();
+            scopeButton.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!GAME_STATE.paused && GAME_STATE.running) toggleCameraMode();
             });
 
             // Przycisk HAMULEC: przytrzymanie = hamowanie, dwukrotne stuknięcie = bieg wsteczny
             const brakeButton = document.getElementById('btn-brake');
             brakeButton.addEventListener('pointerdown', e => {
                 e.preventDefault();
+                e.stopPropagation();
                 const now = performance.now();
                 if (now - lastBrakeTap < 400) reverseEngaged = true; // 2x HAMULEC = wsteczny
                 lastBrakeTap = now;
@@ -3251,7 +3319,6 @@
             };
             brakeButton.addEventListener('pointerup', releaseBrake);
             brakeButton.addEventListener('pointercancel', releaseBrake);
-            brakeButton.addEventListener('pointerleave', releaseBrake);
 
             // Zoom lunety: kółko myszy (przybliżanie/oddalanie)
             window.addEventListener('wheel', e => {
@@ -3274,7 +3341,11 @@
             });
 
             // Menu pauzy i odrodzenie (pointerdown + stopPropagation — unikamy kradzieży pointer lock)
-            document.getElementById('btn-pause-touch').addEventListener('click', () => togglePause());
+            document.getElementById('btn-pause-touch').addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePause();
+            });
             const bindDeathBtn = (id, fn) => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -3611,6 +3682,87 @@
             });
         }
 
+        function mpBroadcast(msg) {
+            if (!GAME_STATE.isHost) return;
+            connections.forEach(conn => {
+                try { if (conn && conn.open) conn.send(msg); } catch (e) {}
+            });
+        }
+
+        function relayShot(kind, origin, dir, ownerId, team) {
+            if (GAME_STATE.mode !== 'MP' || !GAME_STATE.isHost || !origin || !dir) return;
+            mpBroadcast({
+                type: 'SHOT',
+                kind: kind,
+                ox: origin.x, oy: origin.y, oz: origin.z,
+                dx: dir.x, dy: dir.y, dz: dir.z,
+                ownerId: ownerId,
+                team: team
+            });
+        }
+
+        function teamSpawnPoint(team, idx) {
+            const list = TEAM_SPAWNS[team] || TEAM_SPAWNS.red;
+            const spot = list[Math.abs(idx || 0) % list.length];
+            return findClearSpawn(spot[0], spot[1]);
+        }
+
+        function reviveTank(tank, idx) {
+            if (!tank) return;
+            const [sx, sz] = teamSpawnPoint(tank.team, idx);
+            tank.spawn(sx, sz);
+            tank.dead = false;
+            tank.mesh.visible = true;
+            tank.reloadTimer = 0;
+            tank.missileCooldown = 0;
+            if (tank.vehicleType === 'bmp') tank.atgmCount = 4;
+            tank.inputs.fire = false;
+            tank.inputs.missile = false;
+            tank.inputs.forward = 0;
+            tank.inputs.turn = 0;
+        }
+
+        function applyNetworkHp(tank, hp, killer) {
+            if (!tank) return;
+            const prev = tank.hp;
+            tank.hp = hp;
+            if (killer) tank.lastKiller = killer;
+            if (hp <= 0) {
+                tank.dead = true;
+                tank.hp = 0;
+                tank.mesh.visible = false;
+                if (tank === GAME_STATE.playerTank && prev > 0) showDeathScreen(killer || tank.lastKiller);
+            } else if (prev <= 0) {
+                tank.dead = false;
+                tank.mesh.visible = true;
+                if (tank === GAME_STATE.playerTank) finishLocalRespawn();
+            }
+        }
+
+        function finishLocalRespawn() {
+            clearInterval(deathTimer);
+            const el = document.getElementById('death-screen');
+            if (el) el.classList.add('hidden');
+            cameraMode = 'TPP';
+            const vig = document.getElementById('scope-vignette');
+            if (vig) vig.style.display = 'none';
+            const tz2 = document.getElementById('scope-touch-zoom');
+            if (tz2) tz2.style.display = 'none';
+            if (camera) {
+                camera.fov = 60;
+                camera.updateProjectionMatrix();
+            }
+            startVehicleSounds();
+            if (!document.body.classList.contains('is-touch')) {
+                setTimeout(() => {
+                    try {
+                        const p = document.body.requestPointerLock();
+                        if (p && p.catch) p.catch(() => {});
+                    } catch (err) {}
+                }, 150);
+            }
+        }
+
         function broadcastState() {
             if (!GAME_STATE.isHost || !GAME_STATE.running) return;
 
@@ -3626,7 +3778,8 @@
                     rot: t.hullRotation,
                     turretRot: t.turretRotation,
                     pitch: t.barrelPitch,
-                    hp: t.hp
+                    hp: t.hp,
+                    killer: t.lastKiller || ''
                 }))
             };
 
@@ -3635,13 +3788,17 @@
 
         function handleIncomingData(data, conn) {
             if (data.type === 'SYNC' && !GAME_STATE.isHost) {
-                // Client receives state from host
-                GAME_STATE.scores = data.scores;
-                data.tanks.forEach(tData => {
+                GAME_STATE.scores = data.scores || GAME_STATE.scores;
+                const seen = new Set();
+                (data.tanks || []).forEach(tData => {
+                    seen.add(tData.id);
                     let tank = GAME_STATE.tanks.find(t => t.id === tData.id);
+                    if (!tank && GAME_STATE.playerTank && GAME_STATE.playerTank.id === tData.id) tank = GAME_STATE.playerTank;
                     if (!tank) {
                         tank = new Tank(tData.id, tData.team, false, tData.veh || 'tank');
                         tank.spawn(tData.pos[0], tData.pos[2]);
+                        // spawn() ustawia pełne HP — zaraz nadpisze applyNetworkHp prawdziwą wartością
+                        tank.hp = tData.hp;
                         GAME_STATE.tanks.push(tank);
                     }
                     const isLocalPlayer = tank === GAME_STATE.playerTank;
@@ -3653,13 +3810,22 @@
                         tank.turretGroup.rotation.y = tank.turretRotation;
                         tank.barrelPitch = tData.pitch || 0;
                         tank.barrelPivot.rotation.x = -tank.barrelPitch;
+                        tank.mesh.position.copy(tank.position);
                     }
-                    tank.hp = tData.hp;
+                    applyNetworkHp(tank, tData.hp, tData.killer);
                 });
-                const ownSync = GAME_STATE.playerTank ? data.tanks.find(t => t.id === GAME_STATE.playerTank.id) : null;
-                // Host może jeszcze nie otrzymać/obsłużyć wiadomości JOIN po starcie meczu.
-                // Wtedy nie wolno zabijać lokalnego gracza — ponawiamy rejestrację czołgu.
-                if (GAME_STATE.playerTank && !ownSync && GAME_STATE.playerTank.hp > 0) {
+                // Usuń zdalne czołgi, których host już nie ma. Lokalnego gracza nie usuwamy.
+                for (let i = GAME_STATE.tanks.length - 1; i >= 0; i--) {
+                    const t = GAME_STATE.tanks[i];
+                    if (t !== GAME_STATE.playerTank && !seen.has(t.id)) {
+                        scene.remove(t.mesh);
+                        GAME_STATE.tanks.splice(i, 1);
+                    }
+                }
+                const ownSync = GAME_STATE.playerTank ? (data.tanks || []).find(t => t.id === GAME_STATE.playerTank.id) : null;
+                // Ponowne JOIN tylko gdy żyjemy i host nas jeszcze nie ma.
+                // Martwy gracz NIE wysyła JOIN — to tworzyło nowy czołg ze 100% HP.
+                if (GAME_STATE.playerTank && !ownSync && GAME_STATE.playerTank.hp > 0 && !GAME_STATE.playerTank.dead) {
                     const now = performance.now();
                     if (!handleIncomingData._lastJoinRequest || now - handleIncomingData._lastJoinRequest > 1000) {
                         handleIncomingData._lastJoinRequest = now;
@@ -3673,6 +3839,34 @@
                         }
                     }
                 }
+            } else if (data.type === 'HP' && !GAME_STATE.isHost) {
+                if (data.scores) GAME_STATE.scores = data.scores;
+                const tank = GAME_STATE.tanks.find(t => t.id === data.id)
+                    || (GAME_STATE.playerTank && GAME_STATE.playerTank.id === data.id ? GAME_STATE.playerTank : null);
+                applyNetworkHp(tank, data.hp, data.killer);
+            } else if (data.type === 'FX' && !GAME_STATE.isHost) {
+                if (data.kind === 'explosion') {
+                    createExplosion(new THREE.Vector3(data.x, data.y, data.z), data.scale || 1.5, true);
+                }
+            } else if (data.type === 'SHOT' && !GAME_STATE.isHost) {
+                // Własny strzał jest już rysowany lokalnie — nie dubluj pocisku.
+                if (GAME_STATE.playerTank && data.ownerId === GAME_STATE.playerTank.id) {
+                    /* skip own */
+                } else {
+                    const origin = new THREE.Vector3(data.ox, data.oy, data.oz);
+                    const dir = new THREE.Vector3(data.dx, data.dy, data.dz);
+                    if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
+                    if (data.kind === 'auto') {
+                        GAME_STATE.autoShells.push(new AutoCannonShell(origin, dir, data.ownerId, data.team));
+                    } else if (data.kind === 'atgm') {
+                        const aim = origin.clone().add(dir.clone().normalize().multiplyScalar(300));
+                        GAME_STATE.atgms.push(new ATGM(origin, dir, data.ownerId, data.team, aim, data.ownerId));
+                    } else if (data.kind === 'howitzer') {
+                        GAME_STATE.shells.push(new BallisticShell(origin, dir, data.ownerId, data.team, M109_SHELL));
+                    } else {
+                        GAME_STATE.shells.push(new BallisticShell(origin, dir, data.ownerId, data.team));
+                    }
+                }
             } else if (data.type === 'INPUT' && GAME_STATE.isHost) {
                 // Host receives input from client.
                 // ZABEZPIECZENIE: wejście musi pasować do ID przypisanego temu
@@ -3680,15 +3874,35 @@
                 // gracza odpalał czołg drugiego!
                 const controlledId = conn.mpPlayerId || data.playerId;
                 let tank = GAME_STATE.tanks.find(t => t.id === controlledId);
-                if (!tank) return;
-                tank.inputs.forward = data.inputs.forward || 0;
-                tank.inputs.turn = data.inputs.turn || 0;
-                tank.inputs.fire = !!data.inputs.fire;
-                tank.inputs.brake = !!data.inputs.brake;
-                tank.inputs.missile = !!data.inputs.missile;
-                if (data.inputs.aimPoint) {
-                    tank.inputs.aimPoint.set(data.inputs.aimPoint.x || 0, data.inputs.aimPoint.y || 0, data.inputs.aimPoint.z || 0);
+                if (!tank || tank.dead || tank.hp <= 0) return;
+                const inp = data.inputs || {};
+                tank.inputs.forward = inp.forward || 0;
+                tank.inputs.turn = inp.turn || 0;
+                tank.inputs.fire = !!inp.fire;
+                tank.inputs.brake = !!inp.brake;
+                tank.inputs.missile = !!inp.missile;
+                if (inp.aimPoint) {
+                    tank.inputs.aimPoint.set(inp.aimPoint.x || 0, inp.aimPoint.y || 0, inp.aimPoint.z || 0);
                 }
+                if (data.pose) {
+                    tank.netPose = data.pose;
+                    if (data.pose.aim) {
+                        tank.inputs.aimPoint.set(data.pose.aim.x || 0, data.pose.aim.y || 0, data.pose.aim.z || 0);
+                    }
+                }
+            } else if (data.type === 'RESPAWN' && GAME_STATE.isHost) {
+                const id = conn.mpPlayerId || data.id;
+                let tank = GAME_STATE.tanks.find(t => t.id === id);
+                if (!tank) return;
+                if (tank.hp > 0 && !tank.dead) return;
+                reviveTank(tank, conn.mpSpawnIdx || 0);
+                mpBroadcast({
+                    type: 'HP',
+                    id: tank.id,
+                    hp: tank.hp,
+                    killer: '',
+                    scores: GAME_STATE.scores
+                });
             } else if (data.type === 'TEAM_REQUEST' && GAME_STATE.isHost) {
                 if (GAME_STATE.running) return;
                 conn.mpTeam = assignBalancedTeam(data.team, conn);
@@ -3703,25 +3917,26 @@
             } else if (data.type === 'LOBBY_TEAMS' && !GAME_STATE.isHost) {
                 updateMpTeamCountsDisplay(data.counts || { blue: 1, red: 0 });
             } else if (data.type === 'JOIN' && GAME_STATE.isHost) {
-                // Klient dołączył do meczu - host tworzy jego zdalny czołg.
-                // NAJPIERW: wymuś UNIKALNĄ nazwę. ID czołgu = nick, więc dwóch
-                // graczy o tym samym nicku (np. domyślny "Czołgista_1") psuło
-                // CAŁĄ synchronizację - wejścia jednego sterowały czołgiem drugiego.
-                let joinId = String(data.id || 'Gracz');
+                const requested = String(data.id || 'Gracz');
+                // To samo połączenie ma już czołg — nie rób drugiej kopii ze 100% HP.
+                if (conn.mpPlayerId) {
+                    const mine = GAME_STATE.tanks.find(t => t.id === conn.mpPlayerId);
+                    if (mine) {
+                        if (mine.hp <= 0 || mine.dead) reviveTank(mine, conn.mpSpawnIdx || 0);
+                        return;
+                    }
+                }
+                // Nowy gracz: nick musi być unikalny, inaczej wejścia sterują cudzym czołgiem.
+                let joinId = requested;
                 let suffix = 2;
-                while (GAME_STATE.tanks.find(t => t.id === joinId)) joinId = String(data.id) + '_' + (suffix++);
-                conn.mpPlayerId = joinId; // zapamiętaj, czyj to czołg (i walidacja INPUT)
-                if (!GAME_STATE.tanks.find(t => t.id === joinId)) {
-                    const assignedTeam = conn.mpTeam || 'red';
-                    const t = new Tank(joinId, assignedTeam, false, ['bmp', 'm109'].includes(data.vehicle) ? data.vehicle : 'tank');
-                    const sp = TEAM_SPAWNS[assignedTeam] ? TEAM_SPAWNS[assignedTeam][0] : [0, 480];
-                    t.spawn(sp[0], sp[1]);
-                    GAME_STATE.tanks.push(t);
-                }
-                // Jeśli nazwa była zajęta - powiedz klientowi jego nową nazwę
-                if (joinId !== data.id) {
-                    conn.send({ type: 'RENAMED', id: joinId });
-                }
+                while (GAME_STATE.tanks.find(t => t.id === joinId)) joinId = requested + '_' + (suffix++);
+                conn.mpPlayerId = joinId;
+                const assignedTeam = conn.mpTeam || data.team || 'red';
+                const t = new Tank(joinId, assignedTeam, false, ['bmp', 'm109'].includes(data.vehicle) ? data.vehicle : 'tank');
+                const sp = teamSpawnPoint(assignedTeam, conn.mpSpawnIdx || 0);
+                t.spawn(sp[0], sp[1]);
+                GAME_STATE.tanks.push(t);
+                if (joinId !== requested) conn.send({ type: 'RENAMED', id: joinId });
             } else if (data.type === 'GAME_START' && !GAME_STATE.isHost) {
                 // Host wystartował mecz - startujemy u siebie
                 mpAssignedTeam = data.team || 'blue';
@@ -4078,11 +4293,29 @@
                 document.getElementById('death-screen').classList.add('hidden');
                 return;
             }
-            if (GAME_STATE.playerTank && GAME_STATE.playerTank.hp > 0) {
+            if (GAME_STATE.playerTank && GAME_STATE.playerTank.hp > 0 && !GAME_STATE.playerTank.dead) {
                 clearInterval(deathTimer);
                 document.getElementById('death-screen').classList.add('hidden');
                 return;
             }
+
+            // Multiplayer: nie tworzymy nowego czołgu. Host ożywia ten sam obiekt.
+            // Klient czeka na HP > 0 z sieci (inaczej lokalne 100% HP robiło niezniszczalną kopię).
+            if (GAME_STATE.mode === 'MP') {
+                if (GAME_STATE.isHost) {
+                    reviveTank(GAME_STATE.playerTank, 0);
+                    finishLocalRespawn();
+                } else if (connections.length > 0 && connections[0].open && GAME_STATE.playerTank) {
+                    connections[0].send({
+                        type: 'RESPAWN',
+                        id: GAME_STATE.playerTank.id,
+                        team: GAME_STATE.myTeam,
+                        vehicle: GAME_STATE.playerTank.vehicleType
+                    });
+                }
+                return;
+            }
+
             clearInterval(deathTimer);
             document.getElementById('death-screen').classList.add('hidden');
 
@@ -4092,7 +4325,7 @@
 
             const tank = new Tank(nick, GAME_STATE.myTeam, false, document.getElementById('vehicle-choice')?.value || 'tank');
             tank.spawn(sx, sz);
-            attachNightHeadlights(tank); // reflektory wracają po odrodzeniu
+            attachNightHeadlights(tank);
             GAME_STATE.playerTank = tank;
             GAME_STATE.tanks.push(tank);
 
@@ -4100,24 +4333,16 @@
             document.getElementById('scope-vignette').style.display = 'none';
             const tz2 = document.getElementById('scope-touch-zoom');
             if (tz2) tz2.style.display = 'none';
-            camera.fov = 60; // reset zoomu lunety po śmierci
+            camera.fov = 60;
             camera.updateProjectionMatrix();
             startVehicleSounds();
-            // Ponowny pointer lock z krótkim opóźnieniem - przeglądarka blokuje
-            // żądanie zaraz po zwolnieniu locka (błąd by przerywał odradzanie).
             if (!document.body.classList.contains('is-touch')) {
                 setTimeout(() => {
                     try {
                         const p = document.body.requestPointerLock();
                         if (p && p.catch) p.catch(() => {});
-                    } catch (err) { /* ignoruj - gracz kliknie ekran by złapać kursor */ }
+                    } catch (err) {}
                 }, 150);
-            }
-
-            // W multiplayer informujemy hosta o ponownym dołączeniu
-            // (używamy ID czołgu - po ewentualnej zmianie nazwy przez hosta)
-            if (GAME_STATE.mode === 'MP' && !GAME_STATE.isHost && connections.length > 0) {
-                connections[0].send({ type: 'JOIN', id: tank.id, team: GAME_STATE.myTeam, vehicle: tank.vehicleType });
             }
         }
 
@@ -4391,21 +4616,31 @@ function animate() {
             processPlayerInput();
 
             // Client MP Input Transfer
-            if (GAME_STATE.mode === 'MP' && !GAME_STATE.isHost && connections.length > 0) {
+            if (GAME_STATE.mode === 'MP' && !GAME_STATE.isHost && connections.length > 0 && GAME_STATE.playerTank && connections[0].open) {
+                const pt = GAME_STATE.playerTank;
+                const q = pt.mesh.quaternion;
                 connections[0].send({
                     type: 'INPUT',
-                    playerId: GAME_STATE.playerTank.id,
+                    playerId: pt.id,
                     inputs: {
-                        forward: GAME_STATE.playerTank.inputs.forward,
-                        turn: GAME_STATE.playerTank.inputs.turn,
-                        fire: GAME_STATE.playerTank.inputs.fire,
-                        brake: !!GAME_STATE.playerTank.inputs.brake,
-                        missile: !!GAME_STATE.playerTank.inputs.missile,
+                        forward: pt.inputs.forward,
+                        turn: pt.inputs.turn,
+                        fire: pt.hp > 0 && pt.inputs.fire,
+                        brake: !!pt.inputs.brake,
+                        missile: pt.hp > 0 && !!pt.inputs.missile,
                         aimPoint: {
-                            x: GAME_STATE.playerTank.inputs.aimPoint.x,
-                            y: GAME_STATE.playerTank.inputs.aimPoint.y,
-                            z: GAME_STATE.playerTank.inputs.aimPoint.z
+                            x: pt.inputs.aimPoint.x,
+                            y: pt.inputs.aimPoint.y,
+                            z: pt.inputs.aimPoint.z
                         }
+                    },
+                    pose: {
+                        x: pt.position.x, y: pt.position.y, z: pt.position.z,
+                        rot: pt.hullRotation,
+                        turret: pt.turretRotation,
+                        pitch: pt.barrelPitch,
+                        qx: q.x, qy: q.y, qz: q.z, qw: q.w,
+                        aim: { x: pt.inputs.aimPoint.x, y: pt.inputs.aimPoint.y, z: pt.inputs.aimPoint.z }
                     }
                 });
             }
@@ -4470,7 +4705,7 @@ function animate() {
 
             renderer.render(scene, camera);
 
-            if (hideOwnTank) scopeTank.mesh.visible = true;
+            if (hideOwnTank && scopeTank.hp > 0) scopeTank.mesh.visible = true;
         }
 
         /* =========================================================================
