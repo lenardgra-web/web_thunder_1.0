@@ -106,7 +106,7 @@
         
         /* STAŁY rozmiar czcionki w lunecie — niezależny od poziomu zoomu */
         #scope-drop-marks text {
-            font-size: 11px !important;
+            font-size: 12px !important;
             font-family: monospace !important;
         }
         #scope-zoom-label {
@@ -164,6 +164,9 @@
         #btn-fire.pressed { background: rgba(239,68,68,0.9); }
         #btn-scope { right: calc(96px + env(safe-area-inset-right, 0px)); bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px;
             background: rgba(15,23,42,0.72); font-size: 9px; z-index: 32; }
+        #btn-look { right: calc(96px + env(safe-area-inset-right, 0px)); bottom: calc(82px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px;
+            background: rgba(15,23,42,0.72); font-size: 8px; z-index: 32; }
+        #btn-look.pressed { background: rgba(8,145,178,0.9); }
         #btn-brake { left: calc(16px + env(safe-area-inset-left, 0px)); bottom: calc(150px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px;
             background: rgba(51,65,85,0.72); border-color: rgba(148,163,184,0.7); font-size: 8px; z-index: 32; }
         #btn-brake.pressed { background: rgba(100,116,139,0.92); }
@@ -266,7 +269,7 @@
                 <button id="btn-sp" class="flex flex-col items-center justify-center p-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-all transform hover:-translate-y-0.5 shadow-lg shadow-emerald-900/30">
                     <i class="fa-solid fa-user text-2xl mb-1"></i>
                     <span>SINGLEPLAYER</span>
-                    <span class="text-[10px] font-normal opacity-80 mt-0.5">Bitwa z Botami AI</span>
+                    <span class="text-[10px] font-normal opacity-80 mt-0.5">Boty AI — ustawienia</span>
                 </button>
                 <button id="btn-mp-tab" class="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl font-bold transition-all transform hover:-translate-y-0.5">
                     <i class="fa-solid fa-users text-2xl mb-1 text-cyan-400"></i>
@@ -275,8 +278,38 @@
                 </button>
             </div>
 
+            <div class="touch-only mt-6 text-center text-xs text-slate-400">Sterowanie dotykowe: <span class="text-slate-200 font-semibold">lewy drążek</span> - jazda | <span class="text-slate-200 font-semibold">przeciąganie po prawej</span> - celowanie | <span class="text-slate-200 font-semibold">OGIEŃ</span> - strzał (można przeciągać palec) | <span class="text-slate-200 font-semibold">LUNETA</span> - tryb snajperski | <span class="text-slate-200 font-semibold">ROZGLĄD</span> - kamera wokół pojazdu (włącz/wyłącz) | <span class="text-slate-200 font-semibold">HAMULEC</span> - hamowanie (2x stuknięcie = bieg wsteczny) | <span class="text-slate-200 font-semibold">+ / &#8722;</span> - zoom lunety (do 20x)</div>
+            <div class="desktop-only mt-6 text-center text-xs text-slate-500">
+                Sterowanie: <span class="text-slate-300 font-semibold">WSAD</span> - Kadłub | <span class="text-slate-300 font-semibold">S</span> - Hamulec (2x S = bieg wsteczny) | <span class="text-slate-300 font-semibold">Myszka</span> - Celownik | <span class="text-slate-300 font-semibold">LPM</span> - Strzał | <span class="text-slate-300 font-semibold">Shift/PPM</span> - Luneta | <span class="text-slate-300 font-semibold">C (przytrzymaj)</span> - Rozglądanie się | <span class="text-slate-300 font-semibold">Kółko/+/-</span> - Zoom lunety (do 20x) | <span class="text-slate-300 font-semibold">ESC</span> - Menu Pauzy
+            </div>
+        </div>
+    </div>
+
+    <!-- KARTA SINGLEPLAYER -->
+    <div id="sp-card" class="hidden absolute inset-0 z-[55] flex items-center justify-center bg-black/80 backdrop-blur-md">
+        <div class="max-w-xl w-full mx-4 max-h-[94vh] overflow-y-auto bg-slate-900/95 border border-slate-700/80 rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-2xl font-extrabold uppercase tracking-widest text-emerald-400 text-center">Singleplayer</h2>
+            <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-5 text-center">Bitwa z botami AI</p>
+            <p class="text-xs text-slate-400 mb-4">Grasz w drużynie niebieskiej (Twój pojazd, mapa i pora dnia z głównego menu). Ustaw skład botów w obu drużynach:</p>
+            <div id="sp-bot-config" class="space-y-4"></div>
+            <div class="grid grid-cols-2 gap-3 mt-6">
+                <button id="btn-sp-back" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-3 rounded-xl transition">← WRÓĆ</button>
+                <button id="btn-sp-start" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-emerald-900/30">START</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KARTA MULTIPLAYER -->
+    <div id="mp-card" class="hidden absolute inset-0 z-[55] flex items-center justify-center bg-black/80 backdrop-blur-md">
+        <div class="max-w-xl w-full mx-4 max-h-[94vh] overflow-y-auto bg-slate-900/95 border border-slate-700/80 rounded-2xl p-8 shadow-2xl">
+            <h2 class="text-2xl font-extrabold uppercase tracking-widest text-cyan-400 text-center">Multiplayer</h2>
+            <p class="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-5 text-center">P2P PeerJS WebRTC</p>
+            <div class="mb-5">
+                <label class="block text-xs text-slate-400 uppercase font-semibold mb-1">Boty AI w meczu (ustawia host)</label>
+                <div id="mp-bot-config" class="space-y-4"></div>
+            </div>
             <!-- Multiplayer Panel (Hidden by default) -->
-            <div id="mp-panel" class="hidden border-t border-slate-800 pt-6 space-y-4">
+            <div id="mp-panel" class="space-y-4">
                 <div class="flex gap-2">
                     <button id="btn-create-host" class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-lg text-sm font-semibold transition">
                         Stwórz Pokój (Host)
@@ -318,10 +351,7 @@
                 </div>
             </div>
 
-            <div class="touch-only mt-6 text-center text-xs text-slate-400">Sterowanie dotykowe: <span class="text-slate-200 font-semibold">lewy drążek</span> - jazda | <span class="text-slate-200 font-semibold">przeciąganie po prawej</span> - celowanie | <span class="text-slate-200 font-semibold">OGIEŃ</span> - strzał (można przeciągać palec) | <span class="text-slate-200 font-semibold">LUNETA</span> - tryb snajperski | <span class="text-slate-200 font-semibold">HAMULEC</span> - hamowanie (2x stuknięcie = bieg wsteczny) | <span class="text-slate-200 font-semibold">+ / &#8722;</span> - zoom lunety (do 20x)</div>
-            <div class="desktop-only mt-6 text-center text-xs text-slate-500">
-                Sterowanie: <span class="text-slate-300 font-semibold">WSAD</span> - Kadłub | <span class="text-slate-300 font-semibold">S</span> - Hamulec (2x S = bieg wsteczny) | <span class="text-slate-300 font-semibold">Myszka</span> - Celownik | <span class="text-slate-300 font-semibold">LPM</span> - Strzał | <span class="text-slate-300 font-semibold">Shift/PPM</span> - Celownik | <span class="text-slate-300 font-semibold">C</span> - Zmiana Kamery | <span class="text-slate-300 font-semibold">Kółko/+/-</span> - Zoom lunety (do 20x) | <span class="text-slate-300 font-semibold">ESC</span> - Menu Pauzy
-            </div>
+            <button id="btn-mp-back" class="w-full mt-5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-3 rounded-xl transition">← WRÓĆ DO MENU</button>
         </div>
     </div>
 
@@ -435,6 +465,7 @@
         <div id="aim-zone"></div>
         <div id="joy-base"><div id="joy-knob"></div></div>
         <button id="btn-scope" class="t-btn" type="button">LUNETA</button>
+        <button id="btn-look" class="t-btn" type="button">ROZGLĄD</button>
         <button id="btn-brake" class="t-btn" type="button">HAMULEC</button>
         <button id="btn-fire" class="t-btn" type="button">OGIEŃ</button>
         <!-- Zoom lunety (tylko tryb lunety, ekran dotykowy) -->
@@ -473,11 +504,11 @@
             maxSlopeAngle: 32, // Slipping threshold in degrees
             slipGravityFactor: 1.8,
             shellVelocity: 600, // Prędkość wylotowa pocisku (m/s)
-            shellGravity: 12.0
+            shellGravity: 10.0 // delikatnie mniejszy opad pocisku (było 12)
         };
 
         // Pocisk haubicy M109 (155 mm): wolniejszy, łukowy, obrażenia 80-110 HP
-        const M109_SHELL = { velocity: 300, maxLife: 14, damageMin: 80, damageMax: 110, splashRadius: 7 };
+        const M109_SHELL = { velocity: 300, maxLife: 14, damageMin: 95, damageMax: 110, hitMin: 60, hitMax: 80, splashRadius: 10 };
 
         /* Osobne punkty startowe drużyn - przeciwne strony mapy.
            Generowanie mapy jest deterministyczne (seed), więc wszyscy gracze
@@ -730,6 +761,19 @@
            ========================================================================= */
         let scene, camera, renderer, clock, sunLight, ambientLight, nightGroup = null;
         let cameraMode = 'TPP'; // 'TPP', 'FPP', 'SCOPE'
+        // Swobodne rozglądanie się kamerą (C przytrzymane / przycisk ROZGLĄD na telefonie) -
+        // kamera obraca się wokół pojazdu, a wieża i lufa zostają skierowane na ostatni cel.
+        const freeLook = { active: false, yaw: 0, pitch: 0 };
+        function setFreeLook(on) {
+            freeLook.active = !!on && cameraMode === 'TPP';
+            const b = document.getElementById('btn-look');
+            if (b) b.classList.toggle('pressed', freeLook.active);
+        }
+        function freeLookMove(dx, dy, sens) {
+            dx = Math.max(-80, Math.min(80, dx)); dy = Math.max(-80, Math.min(80, dy));
+            freeLook.yaw = Math.atan2(Math.sin(freeLook.yaw - dx * sens), Math.cos(freeLook.yaw - dx * sens));
+            freeLook.pitch = Math.max(-0.35, Math.min(1.25, freeLook.pitch - dy * sens)); // mysz w górę = patrz w górę
+        }
         let mouseX = 0, mouseY = 0;
         let isPointerLocked = false;
         let shakeIntensity = 0;
@@ -888,6 +932,56 @@
                 buildHillsForest();
             } else if (mapType === 'desert') {
                 buildDesertDetails();
+            }
+            addCoverObstacles(mapType);
+        }
+
+        /* Duże osłony (głazy i betonowe zapory), za którymi czołg może się ukryć.
+           Deterministyczne (RNG z seedu mapy) - identyczne u wszystkich graczy w MP. */
+        function addCoverObstacles(mapType) {
+            const boulderMat = new THREE.MeshStandardMaterial({ color: mapType === 'desert' ? 0xb08c5a : 0x7d7a72, roughness: 1 });
+            const concreteMat = new THREE.MeshStandardMaterial({ color: 0x8b8d8f, roughness: 0.95 });
+            const free = (x, z, pad) => {
+                if (Math.abs(x) > 940 || Math.abs(z) > 940) return false;
+                for (const team of ['blue', 'red']) for (const [sx, sz] of TEAM_SPAWNS[team]) {
+                    if (Math.hypot(x - sx, z - sz) < 110) return false;
+                }
+                for (const o of GAME_STATE.obstacles) {
+                    if (o.type === 'box' && x > o.min.x - pad && x < o.max.x + pad && z > o.min.z - pad && z < o.max.z + pad) return false;
+                    if (o.type === 'tree' && Math.hypot(x - o.center.x, z - o.center.z) < pad) return false;
+                }
+                return true;
+            };
+            const boulders = mapType === 'city' ? 0 : 38;
+            for (let i = 0; i < boulders; i++) {
+                const x = (RNG() - 0.5) * 1800, z = (RNG() - 0.5) * 1800;
+                const r = 5 + RNG() * 4.5, h = 6 + RNG() * 5;
+                if (!free(x, z, r + 6)) continue;
+                const g = getTerrainHeight(x, z, mapType);
+                const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), boulderMat);
+                rock.scale.y = h / r;
+                rock.position.set(x, g + h * 0.35, z);
+                rock.rotation.set(RNG() * 0.3, RNG() * Math.PI, RNG() * 0.3);
+                rock.castShadow = true; rock.receiveShadow = true;
+                mapGroup.add(rock);
+                GAME_STATE.obstacles.push({ type: 'box', mesh: rock,
+                    min: new THREE.Vector3(x - r, g - 2, z - r), max: new THREE.Vector3(x + r, g + h * 1.3, z + r), radius: r, round: true });
+            }
+            const walls = mapType === 'city' ? 34 : 22;
+            for (let i = 0; i < walls; i++) {
+                const x = (RNG() - 0.5) * 1800, z = (RNG() - 0.5) * 1800;
+                const w = 16 + RNG() * 18, h = 4.2, d = 2.4, rotY = RNG() * Math.PI;
+                if (!free(x, z, w / 2 + 6)) continue;
+                const g = getTerrainHeight(x, z, mapType);
+                const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h + 1.5, d), concreteMat);
+                wall.position.set(x, g + h / 2 - 0.75, z);
+                wall.rotation.y = rotY;
+                wall.castShadow = true; wall.receiveShadow = true;
+                mapGroup.add(wall);
+                const cosR = Math.abs(Math.cos(rotY)), sinR = Math.abs(Math.sin(rotY));
+                const ex = (w / 2) * cosR + (d / 2) * sinR, ez = (w / 2) * sinR + (d / 2) * cosR;
+                GAME_STATE.obstacles.push({ type: 'box', mesh: wall,
+                    min: new THREE.Vector3(x - ex, g - 2, z - ez), max: new THREE.Vector3(x + ex, g + h, z + ez), radius: w / 2 });
             }
         }
 
@@ -1074,22 +1168,23 @@
             const rockMat2 = new THREE.MeshStandardMaterial({ color: 0x8f8b80, roughness: 1 });
             for (let i = 0; i < 110; i++) {
                 const x = (RNG() - 0.5) * 1900, z = (RNG() - 0.5) * 1900;
-                const r = 1.5 + RNG() * 5, h = 1.5 + RNG() * 6;
+                const r = 3 + RNG() * 6, h = 4 + RNG() * 8;
                 const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), RNG() < .5 ? rockMat : rockMat2);
                 rock.scale.y = h / r;
-                rock.position.set(x, getTerrainHeight(x, z, 'hills') + h * .3, z);
+                const rockG = getTerrainHeight(x, z, 'hills');
+                rock.position.set(x, rockG + h * .3, z);
                 rock.rotation.set(RNG() * .4, RNG() * Math.PI, RNG() * .3);
                 rock.castShadow = true; rock.receiveShadow = true;
                 mapGroup.add(rock);
                 GAME_STATE.obstacles.push({ type: 'box', mesh: rock,
-                    min: new THREE.Vector3(x - r, 0, z - r), max: new THREE.Vector3(x + r, h * 1.4, z + r), radius: r });
+                    min: new THREE.Vector3(x - r, rockG - 2, z - r), max: new THREE.Vector3(x + r, rockG + h * 1.4, z + r), radius: r, round: true });
             }
 
             // Kamiene ogrodzenia / murki zniszczonej farmy
             const wallMat = new THREE.MeshStandardMaterial({ color: 0x9a938a, roughness: 1 });
             for (let i = 0; i < 14; i++) {
                 const x = (RNG() - 0.5) * 1500, z = (RNG() - 0.5) * 1500;
-                const w = 8 + RNG() * 22, h = 1.1 + RNG() * 1.2;
+                const w = 12 + RNG() * 26, h = 3.2 + RNG() * 1.8;
                 const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.4), wallMat);
                 const y = getTerrainHeight(x, z, 'hills');
                 wall.position.set(x, y + h / 2, z);
@@ -1302,7 +1397,12 @@
                 b.timer -= delta;
                 if (b.timer <= 0) {
                     botRespawnQueue.splice(i, 1);
-                    const bot = new Tank(b.name, b.team, true);
+                    if (b.tank) { // multiplayer: ożywiamy ten sam obiekt
+                        reviveTank(b.tank, Math.floor(Math.random() * 6));
+                        mpBroadcast({ type: 'HP', id: b.tank.id, hp: b.tank.hp, killer: '', scores: GAME_STATE.scores });
+                        continue;
+                    }
+                    const bot = new Tank(b.name, b.team, true, b.veh || 'tank');
                     const list = TEAM_SPAWNS[b.team];
                     const [bx, bz] = findClearSpawn(...list[Math.floor(Math.random() * list.length)]);
                     bot.spawn(bx, bz);
@@ -1647,79 +1747,79 @@
                         parent.add(m); return m;
                     };
 
-                    // kadłub aluminiowy: niski, pochyły przód (napęd i silnik z przodu)
-                    extrude(group, [[-3.3, 0.62], [-3.3, 1.75], [1.9, 1.75], [3.25, 1.25], [3.3, 0.9], [2.9, 0.62]], 2.8, armorMat);
+                    // kadłub: szerszy i wyższy (proporcjonalny do wieży), pochyły przód
+                    extrude(group, [[-3.3, 0.62], [-3.3, 2.0], [1.9, 2.0], [3.25, 1.45], [3.3, 0.9], [2.9, 0.62]], 3.2, armorMat);
 
                     // zawieszenie: 7 kół jezdnych, koło napędowe z PRZODU, napinające z tyłu
                     for (const side of [-1, 1]) {
-                        box(group, 0.62, 0.98, 7.0, side * 1.78, 0.58, 0, rubberMat);   // gąsienica
-                        box(group, 0.74, 0.08, 7.0, side * 1.78, 1.12, 0, darkArmor);   // błotnik
+                        box(group, 0.7, 1.05, 7.0, side * 1.95, 0.6, 0, rubberMat);     // gąsienica
+                        box(group, 0.8, 0.08, 7.0, side * 1.95, 1.2, 0, darkArmor);     // błotnik
                         for (let k = 0; k < 7; k++) {
                             const zz = -2.31 + k * 0.77;
-                            const w = cyl(group, 0.42, 0.42, 0.2, side * 2.06, 0.46, zz, steelMat, 18);
+                            const w = cyl(group, 0.45, 0.45, 0.2, side * 2.3, 0.5, zz, steelMat, 18);
                             w.rotation.z = Math.PI / 2;
-                            const hub = cyl(group, 0.17, 0.17, 0.24, side * 2.1, 0.46, zz, darkArmor, 12);
+                            const hub = cyl(group, 0.18, 0.18, 0.24, side * 2.34, 0.5, zz, darkArmor, 12);
                             hub.rotation.z = Math.PI / 2;
                         }
-                        const spr = cyl(group, 0.5, 0.5, 0.22, side * 2.06, 0.6, 3.05, steelMat, 20);
+                        const spr = cyl(group, 0.52, 0.52, 0.22, side * 2.3, 0.64, 3.05, steelMat, 20);
                         spr.rotation.z = Math.PI / 2;
-                        const idl = cyl(group, 0.42, 0.42, 0.22, side * 2.06, 0.55, -3.05, steelMat, 20);
+                        const idl = cyl(group, 0.45, 0.45, 0.22, side * 2.3, 0.58, -3.05, steelMat, 20);
                         idl.rotation.z = Math.PI / 2;
                     }
 
                     // przód kadłuba: luk kierowcy (lewa), kratki silnika (prawa), reflektory
-                    cyl(group, 0.38, 0.42, 0.16, -0.75, 1.82, 2.2, darkArmor, 18);
-                    dome(group, 0.34, -0.75, 1.88, 2.2, armorLight, 0.5);
-                    box(group, 1.2, 0.06, 1.0, 0.75, 1.78, 1.35, steelMat);
-                    for (let i = 0; i < 5; i++) box(group, 1.14, 0.05, 0.08, 0.75, 1.83, 0.98 + i * 0.2, darkArmor);
+                    cyl(group, 0.4, 0.44, 0.16, -0.85, 2.07, 2.2, darkArmor, 18);
+                    dome(group, 0.36, -0.85, 2.13, 2.2, armorLight, 0.5);
+                    box(group, 1.3, 0.06, 1.0, 0.85, 2.03, 1.35, steelMat);
+                    for (let i = 0; i < 5; i++) box(group, 1.24, 0.05, 0.08, 0.85, 2.08, 0.98 + i * 0.2, darkArmor);
                     for (const side of [-1, 1]) {
-                        box(group, 0.36, 0.22, 0.1, side * 1.15, 1.12, 3.3, glassMat);
+                        box(group, 0.36, 0.22, 0.1, side * 1.25, 1.15, 3.3, glassMat);
                     }
 
                     // podpora lufy w pozycji marszowej (travel lock)
-                    box(group, 0.22, 1.4, 0.3, 0, 2.0, 3.05, darkArmor);
-                    box(group, 0.5, 0.14, 0.4, 0, 2.72, 3.05, steelMat);
+                    box(group, 0.22, 1.0, 0.3, 0, 2.0, 3.05, darkArmor);
+                    box(group, 0.5, 0.14, 0.4, 0, 2.55, 3.05, steelMat);
 
                     // tył: drzwi amunicyjne i złożona płyta oporowa (spade)
-                    box(group, 2.7, 0.9, 0.12, 0, 1.2, -3.36, darkArmor);
-                    const spade = box(group, 2.5, 1.0, 0.1, 0, 1.35, -3.75, steelMat);
+                    box(group, 3.0, 1.1, 0.12, 0, 1.3, -3.36, darkArmor);
+                    const spade = box(group, 2.8, 1.1, 0.1, 0, 1.4, -3.75, steelMat);
                     spade.rotation.x = 0.35;
-                    for (const side of [-1, 1]) box(group, 0.14, 0.14, 0.8, side * 0.9, 1.05, -3.55, darkArmor);
+                    for (const side of [-1, 1]) box(group, 0.14, 0.14, 0.8, side * 1.0, 1.1, -3.55, darkArmor);
 
-                    // ===== WIEŻA (z tyłu kadłuba, kanciasta, z wnęką amunicyjną) =====
+                    // ===== WIEŻA (z tyłu kadłuba, niższa i węższa, z wnęką amunicyjną) =====
                     this.turretGroup = new THREE.Group();
-                    this.turretGroup.position.set(0, 1.75, -1.0);
+                    this.turretGroup.position.set(0, 2.0, -1.1);
                     group.add(this.turretGroup);
                     const tg = this.turretGroup;
 
-                    extrude(tg, [[-1.9, 0], [-1.9, 1.55], [-1.2, 1.72], [0.7, 1.72], [1.55, 1.2], [1.55, 0]], 3.0, armorMat);
-                    box(tg, 2.5, 0.06, 1.6, 0, 1.74, -0.4, armorLight);                 // dach
-                    box(tg, 2.7, 1.15, 0.75, 0, 0.62, -2.28, armorMat);                  // tylna wnęka
-                    box(tg, 1.5, 0.85, 0.06, 0, 0.65, -2.67, darkArmor);                 // drzwi amunicyjne
-                    box(tg, 1.5, 1.0, 0.55, 0, 1.0, 1.62, armorLight);                   // obudowa kołyski
+                    extrude(tg, [[-1.5, 0], [-1.5, 1.1], [-1.0, 1.25], [0.5, 1.25], [1.2, 0.9], [1.2, 0]], 2.6, armorMat);
+                    box(tg, 2.1, 0.06, 1.3, 0, 1.27, -0.3, armorLight);                  // dach
+                    box(tg, 2.3, 0.9, 0.6, 0, 0.5, -1.8, armorMat);                       // tylna wnęka
+                    box(tg, 1.3, 0.7, 0.06, 0, 0.52, -2.13, darkArmor);                   // drzwi amunicyjne
+                    box(tg, 1.3, 0.8, 0.45, 0, 0.8, 1.3, armorLight);                     // obudowa kołyski
                     for (const side of [-1, 1]) {
-                        box(tg, 0.18, 0.55, 1.9, side * 1.58, 1.05, -0.6, darkArmor);    // skrzynie na burtach
-                        box(tg, 0.2, 0.28, 0.5, side * 1.0, 1.5, 1.2, darkArmor);        // wyrzutnie granatów dymnych
+                        box(tg, 0.16, 0.45, 1.6, side * 1.38, 0.8, -0.5, darkArmor);      // skrzynie na burtach
+                        box(tg, 0.18, 0.24, 0.4, side * 0.85, 1.2, 0.9, darkArmor);       // wyrzutnie granatów dymnych
                     }
 
                     // kopułka dowódcy z km M2 i właz ładowniczego
-                    cyl(tg, 0.44, 0.48, 0.32, 0.85, 1.88, -1.05, darkArmor, 18);
-                    box(tg, 0.2, 0.25, 0.3, 0.85, 2.15, -1.05, darkArmor);
-                    const m2 = cyl(tg, 0.04, 0.04, 1.2, 0.85, 2.25, -0.55, steelMat, 8);
+                    cyl(tg, 0.38, 0.42, 0.26, 0.7, 1.38, -0.85, darkArmor, 18);
+                    box(tg, 0.18, 0.22, 0.26, 0.7, 1.62, -0.85, darkArmor);
+                    const m2 = cyl(tg, 0.035, 0.035, 1.0, 0.7, 1.72, -0.4, steelMat, 8);
                     m2.rotation.x = Math.PI / 2;
-                    box(tg, 0.28, 0.2, 0.18, 1.05, 2.1, -1.1, darkArmor);
-                    cyl(tg, 0.4, 0.4, 0.14, -0.85, 1.78, -0.6, darkArmor, 18);
-                    dome(tg, 0.38, -0.85, 1.85, -0.6, armorLight, 0.45);
+                    box(tg, 0.26, 0.18, 0.16, 0.9, 1.6, -0.9, darkArmor);
+                    cyl(tg, 0.34, 0.34, 0.12, -0.7, 1.3, -0.5, darkArmor, 18);
+                    dome(tg, 0.32, -0.7, 1.35, -0.5, armorLight, 0.45);
 
                     // anteny
-                    for (const x of [-1.2, 1.2]) cyl(tg, 0.012, 0.025, 2.6, x, 2.9, -2.4, darkArmor, 6);
+                    for (const x of [-1.0, 1.0]) cyl(tg, 0.012, 0.025, 2.2, x, 2.3, -2.0, darkArmor, 6);
 
                     // ===== ARMATA 155 mm z hamulcem wylotowym i eżektorem =====
                     this.barrelPivot = new THREE.Group();
-                    this.barrelPivot.position.set(0, 1.0, 1.85);
+                    this.barrelPivot.position.set(0, 0.8, 1.5);
                     tg.add(this.barrelPivot);
-                    this.barrelBaseZ = 1.85;
-                    this.sightPos = new THREE.Vector3(0, 2.1, 0.55); this.sightInTurret = true;
+                    this.barrelBaseZ = 1.5;
+                    this.sightPos = new THREE.Vector3(0, 1.6, 0.3); this.sightInTurret = true;
                     this.lampZ = 3.32; this.lampY = 1.12;
 
                     const cradle = cyl(this.barrelPivot, 0.3, 0.26, 1.5, 0, 0, 0.5, armorLight, 18);
@@ -1921,7 +2021,7 @@
                 }
 
                 // --- 3. STABLE 4-POINT TERRAIN ALIGNMENT ---
-                const halfW = this.vehicleType === 'm109' ? 2.0 : 1.8;
+                const halfW = this.vehicleType === 'm109' ? 2.3 : 1.8;
                 const halfL = this.vehicleType === 'm109' ? 3.2 : 2.75;
                 const sinRot = Math.sin(this.hullRotation);
                 const cosRot = Math.cos(this.hullRotation);
@@ -2163,7 +2263,9 @@
                     }
 
                     if (this.isAI && GAME_STATE.mode === 'SP') {
-                        botRespawnQueue.push({ name: this.id, team: this.team, timer: 6 + Math.random() * 5 });
+                        botRespawnQueue.push({ name: this.id, team: this.team, veh: this.vehicleType, timer: 6 + Math.random() * 5 });
+                    } else if (this.isAI && GAME_STATE.mode === 'MP' && GAME_STATE.isHost) {
+                        botRespawnQueue.push({ tank: this, timer: 6 + Math.random() * 5 });
                     }
 
                     if (this === GAME_STATE.playerTank) {
@@ -2199,6 +2301,7 @@
                     this.inputs.forward = 0;
                     this.inputs.turn = 0;
                     this.inputs.fire = false;
+                    this.inputs.missile = false;
                     return;
                 }
 
@@ -2220,7 +2323,7 @@
                     Math.sin(target.hullRotation) * target.speed, 0,
                     Math.cos(target.hullRotation) * target.speed
                 );
-                const flightTime = Math.min(1.25, distance / PHYSICS.shellVelocity);
+                const flightTime = Math.min(1.25, distance / (this.vehicleType === 'm109' ? M109_SHELL.velocity : PHYSICS.shellVelocity));
                 const aimPoint = target.position.clone()
                     .add(new THREE.Vector3(0, 1.15, 0))
                     .add(targetVelocity.multiplyScalar(flightTime));
@@ -2344,6 +2447,9 @@
 
                 this.inputs.fire = distance < 420 && !blocked &&
                     Math.abs(yawError) < 0.10 && Math.abs(pitchError) < 0.09;
+                // BMP-owe boty odpalają też ATGM na średnim/dalekim dystansie
+                this.inputs.missile = this.vehicleType === 'bmp' && this.atgmCount > 0 && this.missileCooldown <= 0 &&
+                    distance > 110 && distance < 500 && !blocked && Math.abs(yawError) < 0.12;
             }
         }
 
@@ -2428,10 +2534,12 @@
                             const toTank = tank.position.clone().sub(prevPos);
                             const along = THREE.MathUtils.clamp(toTank.dot(dir), 0, travelLength);
                             const closest = prevPos.clone().addScaledVector(dir, along);
-                            if (closest.distanceTo(tank.position) < 3.4) {
+                            // M109 ma powiększony hitbox (6,5 m zamiast 3,4 m); im dalej od środka celu, tym mniej HP
+                            const missDist = closest.distanceTo(tank.position);
+                            if (missDist < (this.opts ? 6.5 : 3.4)) {
                                 this.position.copy(closest);
                                 this.mesh.position.copy(closest);
-                                this.calculateArmorImpact(tank);
+                                this.calculateArmorImpact(tank, missDist);
                                 this.destroy();
                                 return;
                             }
@@ -2439,6 +2547,19 @@
                     }
                 }
 
+                // Kolizje ze światem sprawdzane w podkrokach (max ~2 m), żeby szybki pocisk
+                // nie przelatywał przez drzewa/skały i nie wybuchał w powietrzu.
+                const endPos = this.position.clone();
+                const segLen = endPos.distanceTo(prevPos);
+                const subSteps = Math.max(1, Math.min(60, Math.ceil(segLen / 2)));
+                for (let ss = 1; ss <= subSteps; ss++) {
+                    this.position.lerpVectors(prevPos, endPos, ss / subSteps);
+                    if (this.checkWorldHit()) { this.mesh.position.copy(this.position); return; }
+                }
+                this.position.copy(endPos);
+            }
+
+            checkWorldHit() {
                 // Check Trees and Fallen Logs Hit
                 for (let obs of GAME_STATE.obstacles) {
                     if (obs.type === 'tree') {
@@ -2448,28 +2569,30 @@
                         if (!obs.isFallen) {
                             // Standing tree blocks shells up to 10m height
                             if (distToTrunk < 2.0 && this.position.y >= groundY && this.position.y <= groundY + 10.0) {
-                                if (this.opts) { this.heDetonate(); return; }
+                                if (this.opts) { this.heDetonate(); return true; }
                                 createDirtImpact(this.position);
                                 this.destroy();
-                                return;
+                                return true;
                             }
                         } else {
                             // Fallen Log blocks shells near ground surface
                             if (distToTrunk < 4.0 && Math.abs(this.position.y - groundY) < 1.2) {
-                                if (this.opts) { this.heDetonate(); return; }
+                                if (this.opts) { this.heDetonate(); return true; }
                                 createDirtImpact(this.position);
                                 this.destroy();
-                                return;
+                                return true;
                             }
                         }
                     } else if (obs.type === 'box') {
-                        if (this.position.x > obs.min.x && this.position.x < obs.max.x &&
-                            this.position.z > obs.min.z && this.position.z < obs.max.z &&
-                            this.position.y < obs.max.y) {
-                            if (this.opts) { this.heDetonate(); return; }
+                        const inFootprint = obs.round
+                            ? Math.hypot(this.position.x - (obs.min.x + obs.max.x) / 2, this.position.z - (obs.min.z + obs.max.z) / 2) < obs.radius * 0.85
+                            : (this.position.x > obs.min.x && this.position.x < obs.max.x &&
+                               this.position.z > obs.min.z && this.position.z < obs.max.z);
+                        if (inFootprint && this.position.y < obs.max.y && this.position.y > obs.min.y) {
+                            if (this.opts) { this.heDetonate(); return true; }
                             createSparkImpact(this.position);
                             this.destroy();
-                            return;
+                            return true;
                         }
                     }
                 }
@@ -2477,24 +2600,26 @@
                 // Check Terrain Ground Hit
                 const terrainY = getTerrainHeight(this.position.x, this.position.z, GAME_STATE.mapName);
                 if (this.position.y <= terrainY) {
-                    if (this.opts) { this.heDetonate(); return; }
+                    if (this.opts) { this.heDetonate(); return true; }
                                 createDirtImpact(this.position);
                     this.destroy();
-                    return;
+                    return true;
                 }
+                return false;
             }
 
-            calculateArmorImpact(targetTank) {
-                if (this.opts) { this.heDirectHit(targetTank); return; }
+
+            calculateArmorImpact(targetTank, missDist = 0) {
+                if (this.opts) { this.heDirectHit(targetTank, missDist); return; }
                 const impactDir = this.velocity.clone().normalize();
                 const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(targetTank.mesh.quaternion);
                 const dot = Math.abs(impactDir.dot(forward));
 
                 let multiplier = 1.0;
-                if (dot > 0.7) multiplier = 0.55;
-                else if (dot < 0.3) multiplier = 1.15;
+                if (dot > 0.7) multiplier = 0.92;      // trafienie w przód / tył - lekko mniej
+                else if (dot < 0.3) multiplier = 1.1;  // trafienie w burtę - lekko więcej
 
-                const damage = Math.max(8, Math.floor((35 + Math.random() * 20) * multiplier));
+                const damage = Math.max(8, Math.floor((45 + Math.random() * 10) * multiplier)); // ok. 50 HP
                 targetTank.takeDamage(damage, this.ownerId);
 
                 if (GAME_STATE.playerTank && this.ownerId === GAME_STATE.playerTank.id) {
@@ -2508,9 +2633,18 @@
                 return this.opts.damageMin + Math.floor(Math.random() * (this.opts.damageMax - this.opts.damageMin + 1));
             }
 
+            // Trafienie niebezpośrednie / odłamki: 60-80 HP
+            heNearRoll() {
+                return this.opts.hitMin + Math.floor(Math.random() * (this.opts.hitMax - this.opts.hitMin + 1));
+            }
+
             // Trafienie bezpośrednie: pełne obrażenia 80-110 HP
-            heDirectHit(targetTank) {
-                const damage = this.heRoll();
+            heDirectHit(targetTank, missDist = 0) {
+                // bezpośrednie trafienie (do 3,4 m od środka): 95-110 HP;
+                // dalej w obrębie hitboxa (do 6,5 m): 60-80 HP, im dalej od środka tym mniej (do -25%)
+                let damage;
+                if (missDist <= 3.4) damage = this.heRoll();
+                else damage = Math.max(1, Math.round(this.heNearRoll() * (1 - (missDist - 3.4) / (6.5 - 3.4) * 0.25)));
                 targetTank.takeDamage(damage, this.ownerId);
                 if (GAME_STATE.playerTank && this.ownerId === GAME_STATE.playerTank.id) {
                     triggerHitNotification(`155 MM: TRAFIENIE! -${damage} HP`, 'text-red-500');
@@ -2533,7 +2667,7 @@
                     if (tank === skipTank || tank.hp <= 0 || tank.team === this.ownerTeam || tank.id === this.ownerId) continue;
                     const d = tank.position.distanceTo(this.position);
                     if (d >= R) continue;
-                    const dmg = Math.round(this.heRoll() * (1 - d / R));
+                    const dmg = Math.round(this.heNearRoll() * (1 - d / R));
                     if (dmg < 5) continue;
                     tank.takeDamage(dmg, this.ownerId);
                     if (GAME_STATE.playerTank && this.ownerId === GAME_STATE.playerTank.id) {
@@ -3046,13 +3180,13 @@
         function updateDropMarks(player, bd) {
             const g = document.getElementById('scope-drop-marks');
             if (!g || !player || !camera) return;
-            let v, grav, ranges;
+            let v, grav, maxR, stepR;
             if (player.vehicleType === 'm109') {
-                v = M109_SHELL.velocity; grav = PHYSICS.shellGravity; ranges = [250, 500, 750, 1000, 1250, 1500, 2000, 2500, 3000];
+                v = M109_SHELL.velocity; grav = PHYSICS.shellGravity; maxR = 3000; stepR = 250;
             } else if (player.vehicleType === 'bmp') {
-                v = 1000; grav = 15; ranges = [200, 400, 600, 800, 1000, 1200];
+                v = 1000; grav = 15; maxR = 2000; stepR = 100;
             } else {
-                v = PHYSICS.shellVelocity; grav = PHYSICS.shellGravity; ranges = [200, 400, 600, 800, 1000, 1200, 1500];
+                v = PHYSICS.shellVelocity; grav = PHYSICS.shellGravity; maxR = 1500; stepR = 100;
             }
             const theta = Math.asin(THREE.MathUtils.clamp(bd.y / bd.length(), -1, 1));
             const W = window.innerWidth, H = window.innerHeight, fov = camera.fov;
@@ -3063,16 +3197,26 @@
             const cx = W / 2, cy = H / 2;
             const tanHalf = Math.tan(THREE.MathUtils.degToRad(fov / 2));
             const cosT = Math.cos(theta);
-            let out = '';
-            ranges.forEach((x, i) => {
-                const drop = grav * x * x / (2 * v * v * cosT * cosT);       // opad względem osi lufy [m]
-                const delta = Math.atan2(x * Math.tan(theta) - drop, x) - theta; // kąt względem osi widzenia
+            // Kandydaci co stepR m; zostają tylko te, które mieszczą się na ekranie i nie zlewają się
+            // z poprzednią kreską (min. 26 px odstępu) - dzięki temu na małym zoomie widać mniej
+            // kresek, ale zawsze czytelnych, a na dużym zoomie więcej.
+            const MIN_GAP = 26, FIRST = 16;
+            let out = '', lastY = cy + FIRST - MIN_GAP, n = 0;
+            for (let x = stepR; x <= maxR; x += stepR) {
+                const drop = grav * x * x / (2 * v * v * cosT * cosT);
+                const delta = Math.atan2(x * Math.tan(theta) - drop, x) - theta;
                 const y = cy - (Math.tan(delta) / tanHalf) * (H / 2);
-                if (y < cy + 20 || y > H - 14) return;
-                const w = i % 2 === 0 ? 14 : 8;
-                out += `<line x1="${cx - w}" y1="${y}" x2="${cx + w}" y2="${y}" stroke="#e8f3e2" stroke-width="1.5" opacity="0.95"/>`;
-                out += `<text x="${cx + w + 6}" y="${y + 4}" fill="#e8f3e2" font-size="11" font-family="monospace" opacity="0.95">${x}</text>`;
-            });
+                if (y > H - 34) break;
+                if (y < cy + FIRST || y - lastY < MIN_GAP) continue;
+                lastY = y;
+                const major = n % 2 === 0;
+                const w = major ? 16 : 9;
+                const xr = Math.round(x);
+                out += `<line x1="${cx - w}" y1="${y}" x2="${cx + w}" y2="${y}" stroke="rgba(0,0,0,0.6)" stroke-width="3.5"/>`;
+                out += `<line x1="${cx - w}" y1="${y}" x2="${cx + w}" y2="${y}" stroke="#e8f3e2" stroke-width="1.5"/>`;
+                out += `<text x="${cx + w + 8}" y="${y + 4}" fill="#e8f3e2" font-size="12" font-family="monospace" font-weight="bold" stroke="rgba(0,0,0,0.75)" stroke-width="3" paint-order="stroke">${xr}</text>`;
+                n++;
+            }
             g.innerHTML = out;
         }
 
@@ -3105,7 +3249,8 @@
                     if (now - lastBrakeTap < 400) reverseEngaged = true;
                     lastBrakeTap = now;
                 }
-                if (e.code === 'KeyC' && GAME_STATE.running && !GAME_STATE.paused) toggleCameraMode();
+                if (e.code === 'KeyC' && !e.repeat && GAME_STATE.running && !GAME_STATE.paused) setFreeLook(true);
+                if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat && GAME_STATE.running && !GAME_STATE.paused) toggleCameraMode();
                 // Zoom lunety: + / - (także numpad)
                 if ((e.code === 'Equal' || e.code === 'NumpadAdd') && cameraMode === 'SCOPE' && GAME_STATE.running && !GAME_STATE.paused) {
                     setScopeZoom(scopeZoomIdx + 1);
@@ -3118,8 +3263,10 @@
                     togglePause();
                 }
             });
+            window.addEventListener('blur', () => setFreeLook(false));
             window.addEventListener('keyup', e => {
                 keys[e.code] = false;
+                if (e.code === 'KeyC') setFreeLook(false);
                 // Puszczenie S/strzałki w dół wyłącza bieg wsteczny,
                 // ale zachowuje czas pierwszego stuknięcia, aby drugie S
                 // w ciągu 0,4 s nadal włączało bieg wsteczny.
@@ -3131,6 +3278,10 @@
             window.addEventListener('mousemove', e => {
                 if (document.body.classList.contains('is-touch')) return;
                 if (document.pointerLockElement === document.body) {
+                    if (freeLook.active && cameraMode === 'TPP') {
+                        freeLookMove(e.movementX, e.movementY, 0.004);
+                        return;
+                    }
                     // W trybie lunety mysz ustawia tylko docelowy kąt wieży i lufy.
                     if (cameraMode === 'SCOPE' && GAME_STATE.playerTank) {
                         const tank = GAME_STATE.playerTank;
@@ -3138,12 +3289,17 @@
                         // Mysz w prawo = wieża w prawo. Czułość skalowana zoomem -
                         // przy 20x ruch myszki jest 20x delikatniejszy (jak w prawdziwej lunecie).
                         const scopeSens = 0.0015 / SCOPE_ZOOM_LEVELS[scopeZoomIdx];
-                        tank.scopeTurretTarget = (tank.scopeTurretTarget ?? tank.turretRotation) - e.movementX * scopeSens;
+                        // Przeglądarka potrafi zgłosić jednorazowy ogromny skok myszy (pointer lock) -
+                        // to powodowało gwałtowny obrót wieży. Skoki odrzucamy/przycinamy.
+                        if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;
+                        const mvX = Math.max(-80, Math.min(80, e.movementX));
+                        const mvY = Math.max(-80, Math.min(80, e.movementY));
+                        tank.scopeTurretTarget = (tank.scopeTurretTarget ?? tank.turretRotation) - mvX * scopeSens;
                         tank.scopeTurretTarget = Math.atan2(Math.sin(tank.scopeTurretTarget), Math.cos(tank.scopeTurretTarget));
 
                         tank.scopeBarrelTarget = Math.max(
                             tank.minElevation,
-                            Math.min(tank.maxElevation, (tank.scopeBarrelTarget ?? tank.barrelPitch) - e.movementY * scopeSens)
+                            Math.min(tank.maxElevation, (tank.scopeBarrelTarget ?? tank.barrelPitch) - mvY * scopeSens)
                         );
 
                         return;
@@ -3256,6 +3412,7 @@
                 const dy = e.clientY - touchInput.lastAimY;
                 touchInput.lastAimX = e.clientX;
                 touchInput.lastAimY = e.clientY;
+                if (freeLook.active && cameraMode === 'TPP') { freeLookMove(dx, dy, 0.006); return; }
                 // W trybie lunety przeciąganie palcem kręci wieżą i lufą
                 // (wcześniej na telefonie w lunecie nie dało się ruszyć wieży!)
                 if (cameraMode === 'SCOPE' && GAME_STATE.playerTank && GAME_STATE.playerTank.hp > 0) {
@@ -3294,6 +3451,12 @@
             };
             fireButton.addEventListener('pointerup', releaseFire);
             fireButton.addEventListener('pointercancel', releaseFire);
+            const lookButton = document.getElementById('btn-look');
+            if (lookButton) lookButton.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!GAME_STATE.paused && GAME_STATE.running) setFreeLook(!freeLook.active);
+            });
             scopeButton.addEventListener('pointerdown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -3398,6 +3561,7 @@
             player.inputs.missile = !!keys['KeyG'];
 
             if (cameraMode === 'SCOPE') return; // w lunecie aimPoint jest synchronizowany z lufą
+            if (freeLook.active) return;        // podczas rozglądania cel wieży zostaje bez zmian
 
             // Screen crosshair raycast -> 3D Target Point for Turret & Elevation
             raycaster.setFromCamera(mouseScreenPos, camera);
@@ -3418,6 +3582,8 @@
             const player = GAME_STATE.playerTank;
 
             if (cameraMode === 'TPP') {
+                setFreeLook(false);
+                freeLook.yaw = 0; freeLook.pitch = 0;
                 cameraMode = 'SCOPE';
                 scopeEl.style.display = 'block';
                 // Przyciski zoomu dla ekranów dotykowych
@@ -3465,14 +3631,22 @@
                 const camDist = 12.0;
                 const camHeight = 4.5;
 
+                if (!freeLook.active) { // płynny powrót kamery za pojazd
+                    const k = Math.min(1, delta * 10);
+                    freeLook.yaw += (0 - freeLook.yaw) * k;
+                    freeLook.pitch += (0 - freeLook.pitch) * k;
+                }
+                const lookAng = player.hullRotation + freeLook.yaw;
                 const backOffset = new THREE.Vector3(
-                    -Math.sin(player.hullRotation) * camDist,
+                    -Math.sin(lookAng) * camDist,
                     camHeight,
-                    -Math.cos(player.hullRotation) * camDist
+                    -Math.cos(lookAng) * camDist
                 );
 
                 camera.position.copy(tankPos).add(backOffset);
                 camera.lookAt(tankPos.clone().add(new THREE.Vector3(0, 0.8, 0)));
+                // Rozglądanie w górę / w dół: obrót kamery wokół jej poziomej osi
+                if (freeLook.pitch !== 0) camera.rotateX(freeLook.pitch);
             } else if (cameraMode === 'SCOPE') {
                 // Płynny ruch wieży i lufy do pozycji docelowej.
                 if (player.scopeTurretTarget === undefined) player.scopeTurretTarget = player.turretRotation;
@@ -3480,7 +3654,11 @@
 
                 let yawDiff = player.scopeTurretTarget - player.turretRotation;
                 yawDiff = Math.atan2(Math.sin(yawDiff), Math.cos(yawDiff));
-                player.turretRotation += yawDiff * Math.min(1, delta * 8.0);
+                let yawStep = yawDiff * Math.min(1, delta * 8.0);
+                const maxScopeYawStep = 4.0 * delta; // rad/s - bez nagłych szarpnięć
+                yawStep = Math.max(-maxScopeYawStep, Math.min(maxScopeYawStep, yawStep));
+                player.turretRotation += yawStep;
+                player.turretRotation = Math.atan2(Math.sin(player.turretRotation), Math.cos(player.turretRotation));
                 player.turretGroup.rotation.y = player.turretRotation;
 
                 player.barrelPitch += (player.scopeBarrelTarget - player.barrelPitch) * Math.min(1, delta * 8.0);
@@ -3713,6 +3891,11 @@
             tank.spawn(sx, sz);
             tank.dead = false;
             tank.mesh.visible = true;
+            // Host trzymał starą pozę zdalnego gracza (miejsce śmierci) i nadpisywał nią spawn.
+            tank.netPose = null;
+            tank.poseIgnoreUntil = performance.now() + 900;
+            tank.velocity.set(0, 0, 0);
+            tank.stuckTime = 0;
             tank.reloadTimer = 0;
             tank.missileCooldown = 0;
             if (tank.vehicleType === 'bmp') tank.atgmCount = 4;
@@ -3843,6 +4026,14 @@
                 if (data.scores) GAME_STATE.scores = data.scores;
                 const tank = GAME_STATE.tanks.find(t => t.id === data.id)
                     || (GAME_STATE.playerTank && GAME_STATE.playerTank.id === data.id ? GAME_STATE.playerTank : null);
+                // Odrodzenie: przenieś własny czołg na punkt startowy drużyny wskazany przez hosta
+                if (tank && data.pos && data.hp > 0 && tank.hp <= 0) {
+                    tank.position.set(data.pos[0], data.pos[1], data.pos[2]);
+                    tank.hullRotation = data.rot || 0;
+                    tank.speed = 0;
+                    tank.velocity.set(0, 0, 0);
+                    tank.mesh.position.copy(tank.position);
+                }
                 applyNetworkHp(tank, data.hp, data.killer);
             } else if (data.type === 'FX' && !GAME_STATE.isHost) {
                 if (data.kind === 'explosion') {
@@ -3884,7 +4075,7 @@
                 if (inp.aimPoint) {
                     tank.inputs.aimPoint.set(inp.aimPoint.x || 0, inp.aimPoint.y || 0, inp.aimPoint.z || 0);
                 }
-                if (data.pose) {
+                if (data.pose && !(tank.poseIgnoreUntil && performance.now() < tank.poseIgnoreUntil)) {
                     tank.netPose = data.pose;
                     if (data.pose.aim) {
                         tank.inputs.aimPoint.set(data.pose.aim.x || 0, data.pose.aim.y || 0, data.pose.aim.z || 0);
@@ -3901,7 +4092,9 @@
                     id: tank.id,
                     hp: tank.hp,
                     killer: '',
-                    scores: GAME_STATE.scores
+                    scores: GAME_STATE.scores,
+                    pos: [tank.position.x, tank.position.y, tank.position.z],
+                    rot: tank.hullRotation
                 });
             } else if (data.type === 'TEAM_REQUEST' && GAME_STATE.isHost) {
                 if (GAME_STATE.running) return;
@@ -3922,7 +4115,11 @@
                 if (conn.mpPlayerId) {
                     const mine = GAME_STATE.tanks.find(t => t.id === conn.mpPlayerId);
                     if (mine) {
-                        if (mine.hp <= 0 || mine.dead) reviveTank(mine, conn.mpSpawnIdx || 0);
+                        if (mine.hp <= 0 || mine.dead) {
+                            reviveTank(mine, conn.mpSpawnIdx || 0);
+                            mpBroadcast({ type: 'HP', id: mine.id, hp: mine.hp, killer: '', scores: GAME_STATE.scores,
+                                pos: [mine.position.x, mine.position.y, mine.position.z], rot: mine.hullRotation });
+                        }
                         return;
                     }
                 }
@@ -4099,7 +4296,67 @@
             return [x, z];
         }
 
-        function startGame(mapName, isMultiplayer, nightMode) {
+        /* ---------- Konfiguracja botów (karty SP / MP) ---------- */
+        const BOT_VEHICLES = [['tank', 'Czołg'], ['bmp', 'BMP'], ['m109', 'M109']];
+        function renderBotConfig(containerId, prefix, defaults) {
+            const box = document.getElementById(containerId);
+            if (!box) return;
+            const teams = [['blue', 'Niebiescy', 'text-blue-400'], ['red', 'Czerwoni', 'text-red-400']];
+            box.innerHTML = teams.map(([team, label, color]) => `
+                <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold uppercase text-sm ${color}">${label}</span>
+                        <span class="text-xs text-slate-400">Botów: <span id="${prefix}-${team}-total" class="font-bold text-white">0</span></span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        ${BOT_VEHICLES.map(([v, name]) => `
+                            <label class="text-[11px] text-slate-400 uppercase font-semibold">${name}
+                                <input type="number" min="0" max="10" value="${defaults[team][v] || 0}" id="${prefix}-${team}-${v}"
+                                    class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+                            </label>`).join('')}
+                    </div>
+                </div>`).join('');
+            const refresh = () => teams.forEach(([team]) => {
+                const cfg = readBotConfig(prefix)[team];
+                document.getElementById(`${prefix}-${team}-total`).innerText = cfg.tank + cfg.bmp + cfg.m109;
+            });
+            box.querySelectorAll('input').forEach(inp => inp.addEventListener('input', refresh));
+            refresh();
+        }
+
+        function readBotConfig(prefix) {
+            const cfg = { blue: {}, red: {} };
+            for (const team of ['blue', 'red']) {
+                for (const [v] of BOT_VEHICLES) {
+                    const el = document.getElementById(`${prefix}-${team}-${v}`);
+                    cfg[team][v] = Math.max(0, Math.min(10, parseInt(el && el.value, 10) || 0));
+                }
+            }
+            return cfg;
+        }
+
+        function spawnBots(cfg, blueStart, redStart) {
+            const start = { blue: blueStart, red: redStart };
+            for (const team of ['blue', 'red']) {
+                let n = 0, k = start[team];
+                for (const [veh] of BOT_VEHICLES) {
+                    for (let c = 0; c < (cfg[team][veh] || 0); c++) {
+                        n++;
+                        const list = TEAM_SPAWNS[team];
+                        const base = list[k % list.length];
+                        const row = Math.floor(k / list.length);
+                        const dz = (team === 'red' ? 1 : -1) * row * 24;
+                        const bot = new Tank(`${team === 'blue' ? 'Sojusznik' : 'Wróg'}_${n}`, team, true, veh);
+                        const [bx, bz] = findClearSpawn(base[0], base[1] + dz);
+                        bot.spawn(bx, bz);
+                        GAME_STATE.tanks.push(bot);
+                        k++;
+                    }
+                }
+            }
+        }
+
+        function startGame(mapName, isMultiplayer, nightMode, botConfig) {
             initAudio();
             GAME_STATE.mapName = mapName;
             GAME_STATE.nightMode = !!nightMode;
@@ -4120,6 +4377,8 @@
 
             // UI Transitions
             document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('sp-card').classList.add('hidden');
+            document.getElementById('mp-card').classList.add('hidden');
             document.getElementById('pause-menu').classList.add('hidden');
             document.getElementById('hud-container').classList.remove('hidden');
 
@@ -4141,20 +4400,11 @@
             GAME_STATE.playerTank = playerTank;
             GAME_STATE.tanks.push(playerTank);
 
-            // Auto-Balance Teams with Bots (singleplayer)
+            // Boty wg konfiguracji z karty (SP) lub hosta (MP; klienci dostają je przez SYNC)
             if (GAME_STATE.mode === 'SP') {
-                for (let i = 1; i <= 3; i++) {
-                    const bot = new Tank(`Sojusznik_${i}`, 'blue', true);
-                    const [bx, bz] = findClearSpawn(...TEAM_SPAWNS.blue[i % TEAM_SPAWNS.blue.length]);
-                    bot.spawn(bx, bz);
-                    GAME_STATE.tanks.push(bot);
-                }
-                for (let i = 0; i < 4; i++) {
-                    const bot = new Tank(`Wróg_${i + 1}`, 'red', true);
-                    const [bx, bz] = findClearSpawn(...TEAM_SPAWNS.red[i % TEAM_SPAWNS.red.length]);
-                    bot.spawn(bx, bz);
-                    GAME_STATE.tanks.push(bot);
-                }
+                spawnBots(botConfig || { blue: { tank: 3 }, red: { tank: 4 } }, 1, 0);
+            } else if (GAME_STATE.isHost && botConfig) {
+                spawnBots(botConfig, 3, 3);
             }
 
             // Klient multiplayer informuje hosta o dołączeniu
@@ -4370,7 +4620,10 @@
             actualPoint.project(camera);
 
             const actualDot = document.getElementById('dynamic-target-reticle');
-            if (actualPoint.z < 1 && actualPoint.z > -1) {
+            if (cameraMode === 'SCOPE') {
+                // W lunecie celownik jest zawsze na środku - kropka lufy się nie pokazuje (rozjeżdżała się z krzyżem).
+                actualDot.style.display = 'none';
+            } else if (actualPoint.z < 1 && actualPoint.z > -1) {
                 actualDot.style.left = `${(actualPoint.x * 0.5 + 0.5) * window.innerWidth}px`;
                 actualDot.style.top = `${(-actualPoint.y * 0.5 + 0.5) * window.innerHeight}px`;
                 actualDot.style.display = 'block';
@@ -4512,13 +4765,7 @@
                     this.motorOn = true;
                     this.flame.visible = true;
                     this.glow.visible = true;
-                    const ign = makeGlow(7, 1);
-                    ign.position.copy(this.position);
-                    addEffect(ign, { duration: 0.2, grow: 1.5, fade: true, baseOpacity: 1, baseScale: 7 });
-                    for (let i = 0; i < 6; i++) {
-                        smokePuff(this.position, 0.4, 0xcfcfcf, 0.6, 1.8,
-                            new THREE.Vector3(rnd(-1.5, 1.5), rnd(0, 1.5), rnd(-1.5, 1.5)), 4, 0.94);
-                    }
+                    // (usunięto parę/dym przy zapłonie - utrudniała celowanie)
                 }
                 if (this.motorOn) this.speedNow = Math.min(this.speed, this.speedNow + 420 * delta);
 
@@ -4561,15 +4808,7 @@
                     this.glow.scale.setScalar(rnd(1.8, 2.6));
                 }
 
-                // smuga dymu za rakietą (rozłożona równomiernie wzdłuż toru)
-                this.trailCarry += this.position.distanceTo(prev);
-                const step = this.motorOn ? 2.0 : 1.2;
-                while (this.trailCarry >= step) {
-                    this.trailCarry -= step;
-                    const p = this.position.clone().addScaledVector(dirN, -(this.trailCarry + 1.0));
-                    smokePuff(p, this.motorOn ? 0.28 : 0.2, 0xe4e4e4, this.motorOn ? 0.5 : 0.35, 2.2,
-                        new THREE.Vector3(rnd(-0.3, 0.3), rnd(0.15, 0.45), rnd(-0.3, 0.3)), 3.6, 0.96);
-                }
+                // (usunięto smugę dymu/pary za rakietą - utrudniała celowanie)
 
                 for (const tank of GAME_STATE.tanks) {
                     if (tank.id === this.ownerId || tank.hp <= 0 || tank.team === this.team) continue;
@@ -4750,16 +4989,27 @@ function animate() {
                 nickInput.value = 'Czołgista_' + Math.floor(100 + Math.random() * 900);
             }
 
-            // Menu Tab Switchers
-            document.getElementById('btn-mp-tab').addEventListener('click', () => {
-                document.getElementById('mp-panel').classList.toggle('hidden');
-            });
+            // Karty trybów
+            renderBotConfig('sp-bot-config', 'sp', { blue: { tank: 3 }, red: { tank: 4 } });
+            renderBotConfig('mp-bot-config', 'mp', { blue: { tank: 0 }, red: { tank: 0 } });
+            const openCard = (id) => {
+                document.getElementById('main-menu').classList.add('hidden');
+                document.getElementById(id).classList.remove('hidden');
+            };
+            const closeCard = (id) => {
+                document.getElementById(id).classList.add('hidden');
+                document.getElementById('main-menu').classList.remove('hidden');
+            };
+            document.getElementById('btn-mp-tab').addEventListener('click', () => openCard('mp-card'));
+            document.getElementById('btn-sp').addEventListener('click', () => openCard('sp-card'));
+            document.getElementById('btn-mp-back').addEventListener('click', () => closeCard('mp-card'));
+            document.getElementById('btn-sp-back').addEventListener('click', () => closeCard('sp-card'));
 
             // Singleplayer Start
-            document.getElementById('btn-sp').addEventListener('click', () => {
+            document.getElementById('btn-sp-start').addEventListener('click', () => {
                 const selectedMap = document.getElementById('map-select').value;
                 const night = document.getElementById('night-mode').checked;
-                startGame(selectedMap, false, night);
+                startGame(selectedMap, false, night, readBotConfig('sp'));
             });
 
             // Multiplayer Host Creation
@@ -4834,7 +5084,7 @@ function animate() {
             document.getElementById('btn-start-mp-game').addEventListener('click', () => {
                 const selectedMap = document.getElementById('map-select').value;
                 const night = document.getElementById('night-mode').checked;
-                startGame(selectedMap, true, night);
+                startGame(selectedMap, true, night, readBotConfig('mp'));
             });
         };
     </script>
