@@ -812,9 +812,9 @@
 
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.5, 30000);
 
-            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFShadowMap;
             container.appendChild(renderer.domElement);
@@ -3272,7 +3272,7 @@
                 camera.updateProjectionMatrix();
             }
         }
-        const touchInput = { forward: 0, turn: 0, brake: false, aimPointerId: null, lastAimX: 0, lastAimY: 0, joyPointerId: null };
+        const touchInput = { forward: 0, turn: 0, brake: false, missile: false, aimPointerId: null, lastAimX: 0, lastAimY: 0, joyPointerId: null };
         const raycaster = new THREE.Raycaster();
         let mouseScreenPos = new THREE.Vector2(0, 0);
 
@@ -3594,7 +3594,7 @@
             player.inputs.forward = fwd;
             player.inputs.turn = trn;
             player.inputs.brake = brake;
-            player.inputs.missile = !!keys['KeyG'];
+            player.inputs.missile = !!keys['KeyG'] || !!touchInput.missile;
 
             if (cameraMode === 'SCOPE') return; // w lunecie aimPoint jest synchronizowany z lufą
             if (freeLook.active) return;        // podczas rozglądania cel wieży zostaje bez zmian
@@ -4997,14 +4997,24 @@ function animate() {
             const fireMissile = () => {
                 const player = GAME_STATE.playerTank;
                 if (player && player.vehicleType === 'bmp' && player.hp > 0) {
+                    touchInput.missile = true;
                     player.inputs.missile = true;
                     setTimeout(() => {
-                        if (GAME_STATE.playerTank) GAME_STATE.playerTank.inputs.missile = false;
-                    }, 90);
+                        touchInput.missile = false;
+                        if (GAME_STATE.playerTank && !keys['KeyG']) {
+                            GAME_STATE.playerTank.inputs.missile = false;
+                        }
+                    }, 120);
                 }
             };
 
             button.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try { button.setPointerCapture(e.pointerId); } catch (err) {}
+                fireMissile();
+            });
+            button.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 fireMissile();
@@ -5127,295 +5137,29 @@ function animate() {
         const I18N = {
             pl: {},
             en: {
-                'Nick Gracza':'Player Name',
-                'Wybór Mapy':'Map Selection',
-                'Pora Dnia':'Time of Day',
-                'Sterowanie':'Controls',
-                'Pojazd':'Vehicle',
-                'SINGLEPLAYER':'SINGLEPLAYER',
-                'MULTIPLAYER':'MULTIPLAYER',
-                'Boty AI — ustawienia':'AI Bots — settings',
-                'P2P PeerJS WebRTC':'P2P PeerJS WebRTC',
+                'Nick Gracza':'Player Name','Wybór Mapy':'Map Selection','Pora Dnia':'Time of Day','Sterowanie':'Controls','Pojazd':'Vehicle',
+                'SINGLEPLAYER':'SINGLEPLAYER','MULTIPLAYER':'MULTIPLAYER','Boty AI — ustawienia':'AI Bots — settings','P2P PeerJS WebRTC':'P2P PeerJS WebRTC',
                 'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Night mode (all maps at night, headlights and moon)',
-                'Automatyczne (wykryj urządzenie)':'Automatic (detect device)',
-                'Dotykowe (telefon / tablet)':'Touch (phone / tablet)',
-                'Klawiatura + mysz (komputer)':'Keyboard + mouse (PC)',
-                'Czołg podstawowy':'Main Battle Tank',
-                'BMP — działko automatyczne + ATGM':'BMP — autocannon + ATGM',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm self-propelled howitzer'
+                'Automatyczne (wykryj urządzenie)':'Automatic (detect device)','Dotykowe (telefon / tablet)':'Touch (phone / tablet)',
+                'Klawiatura + mysz (komputer)':'Keyboard + mouse (PC)','Czołg podstawowy':'Main Battle Tank',
+                'BMP — działko automatyczne + ATGM':'BMP — autocannon + ATGM','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm self-propelled howitzer'
             },
-            de: {
-                'Nick Gracza':'Spielername',
-                'Wybór Mapy':'Kartenauswahl',
-                'Pora Dnia':'Tageszeit',
-                'Sterowanie':'Steuerung',
-                'Pojazd':'Fahrzeug',
-                'SINGLEPLAYER':'EINZELSPIELER',
-                'MULTIPLAYER':'MEHRSPIELER',
-                'Boty AI — ustawienia':'KI-Bots — Einstellungen',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Nachtmodus (alle Karten bei Nacht, Scheinwerfer und Mond)',
-                'Automatyczne (wykryj urządzenie)':'Automatisch (Gerät erkennen)',
-                'Dotykowe (telefon / tablet)':'Touch (Handy / Tablet)',
-                'Klawiatura + mysz (komputer)':'Tastatur + Maus (PC)',
-                'Czołg podstawowy':'Kampfpanzer',
-                'BMP — działko automatyczne + ATGM':'BMP — Maschinenkanone + Panzerabwehrrakete',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155-mm-Panzerhaubitze'
-            },
-            fr: {
-                'Nick Gracza':'Nom du joueur',
-                'Wybór Mapy':'Choix de la carte',
-                'Pora Dnia':'Moment de la journée',
-                'Sterowanie':'Commandes',
-                'Pojazd':'Véhicule',
-                'SINGLEPLAYER':'SOLO',
-                'MULTIPLAYER':'MULTIJOUEUR',
-                'Boty AI — ustawienia':'Bots IA — réglages',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Mode nuit (toutes les cartes de nuit, phares et lune)',
-                'Automatyczne (wykryj urządzenie)':'Automatique (détecter l’appareil)',
-                'Dotykowe (telefon / tablet)':'Tactile (téléphone / tablette)',
-                'Klawiatura + mysz (komputer)':'Clavier + souris (PC)',
-                'Czołg podstawowy':'Char de combat principal',
-                'BMP — działko automatyczne + ATGM':'BMP — canon automatique + ATGM',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obusier automoteur de 155 mm'
-            },
-            es: {
-                'Nick Gracza':'Nombre del jugador',
-                'Wybór Mapy':'Selección de mapa',
-                'Pora Dnia':'Hora del día',
-                'Sterowanie':'Controles',
-                'Pojazd':'Vehículo',
-                'SINGLEPLAYER':'UN JUGADOR',
-                'MULTIPLAYER':'MULTIJUGADOR',
-                'Boty AI — ustawienia':'Bots de IA — ajustes',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Modo nocturno (todos los mapas de noche, faros y luna)',
-                'Automatyczne (wykryj urządzenie)':'Automático (detectar dispositivo)',
-                'Dotykowe (telefon / tablet)':'Táctil (teléfono / tablet)',
-                'Klawiatura + mysz (komputer)':'Teclado + ratón (PC)',
-                'Czołg podstawowy':'Carro de combate principal',
-                'BMP — działko automatyczne + ATGM':'BMP — cañón automático + ATGM',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obús autopropulsado de 155 mm'
-            },
-            it: {
-                'Nick Gracza':'Nome giocatore',
-                'Wybór Mapy':'Selezione mappa',
-                'Pora Dnia':'Momento della giornata',
-                'Sterowanie':'Comandi',
-                'Pojazd':'Veicolo',
-                'SINGLEPLAYER':'GIOCATORE SINGOLO',
-                'MULTIPLAYER':'MULTIGIOCATORE',
-                'Boty AI — ustawienia':'Bot IA — impostazioni',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Modalità notturna (tutte le mappe di notte, fari e luna)',
-                'Automatyczne (wykryj urządzenie)':'Automatico (rileva dispositivo)',
-                'Dotykowe (telefon / tablet)':'Touch (telefono / tablet)',
-                'Klawiatura + mysz (komputer)':'Tastiera + mouse (PC)',
-                'Czołg podstawowy':'Carro armato principale',
-                'BMP — działko automatyczne + ATGM':'BMP — cannone automatico + ATGM',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obice semovente da 155 mm'
-            },
-            pt: {
-                'Nick Gracza':'Nome do jogador',
-                'Wybór Mapy':'Seleção de mapa',
-                'Pora Dnia':'Hora do dia',
-                'Sterowanie':'Controles',
-                'Pojazd':'Veículo',
-                'SINGLEPLAYER':'UM JOGADOR',
-                'MULTIPLAYER':'MULTIJOGADOR',
-                'Boty AI — ustawienia':'Bots de IA — configurações',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Modo noturno (todos os mapas à noite, faróis e lua)',
-                'Automatyczne (wykryj urządzenie)':'Automático (detetar dispositivo)',
-                'Dotykowe (telefon / tablet)':'Toque (telemóvel / tablet)',
-                'Klawiatura + mysz (komputer)':'Teclado + rato (PC)',
-                'Czołg podstawowy':'Carro de combate principal',
-                'BMP — działko automatyczne + ATGM':'BMP — canhão automático + ATGM',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obus autopropulsado de 155 mm'
-            },
-            ru: {
-                'Nick Gracza':'Имя игрока',
-                'Wybór Mapy':'Выбор карты',
-                'Pora Dnia':'Время суток',
-                'Sterowanie':'Управление',
-                'Pojazd':'Техника',
-                'SINGLEPLAYER':'ОДИНОЧНАЯ ИГРА',
-                'MULTIPLAYER':'МУЛЬТИПЛЕЕР',
-                'Boty AI — ustawienia':'ИИ-боты — настройки',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Ночной режим (все карты ночью, фары и луна)',
-                'Automatyczne (wykryj urządzenie)':'Автоматически (определить устройство)',
-                'Dotykowe (telefon / tablet)':'Сенсорное (телефон / планшет)',
-                'Klawiatura + mysz (komputer)':'Клавиатура + мышь (ПК)',
-                'Czołg podstawowy':'Основной боевой танк',
-                'BMP — działko automatyczne + ATGM':'БМП — автопушка + ПТУР',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155-мм самоходная гаубица'
-            },
-            uk: {
-                'Nick Gracza':'Ім’я гравця',
-                'Wybór Mapy':'Вибір карти',
-                'Pora Dnia':'Час доби',
-                'Sterowanie':'Керування',
-                'Pojazd':'Техніка',
-                'SINGLEPLAYER':'ОДНОКОРИСТУВАЦЬКА',
-                'MULTIPLAYER':'МУЛЬТИПЛЕЄР',
-                'Boty AI — ustawienia':'ШІ-боти — налаштування',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Нічний режим (усі мапи вночі, фари та місяць)',
-                'Automatyczne (wykryj urządzenie)':'Автоматично (визначити пристрій)',
-                'Dotykowe (telefon / tablet)':'Сенсорне (телефон / планшет)',
-                'Klawiatura + mysz (komputer)':'Клавіатура + миша (ПК)',
-                'Czołg podstawowy':'Основний бойовий танк',
-                'BMP — działko automatyczne + ATGM':'БМП — автоматична гармата + ПТКР',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155-мм самохідна гаубиця'
-            },
-            zh: {
-                'Nick Gracza':'玩家名称',
-                'Wybór Mapy':'地图选择',
-                'Pora Dnia':'时间',
-                'Sterowanie':'控制',
-                'Pojazd':'载具',
-                'SINGLEPLAYER':'单人游戏',
-                'MULTIPLAYER':'多人游戏',
-                'Boty AI — ustawienia':'AI 机器人 — 设置',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'夜间模式（所有地图为夜晚，车灯和月亮）',
-                'Automatyczne (wykryj urządzenie)':'自动（检测设备）',
-                'Dotykowe (telefon / tablet)':'触屏（手机 / 平板）',
-                'Klawiatura + mysz (komputer)':'键盘 + 鼠标（电脑）',
-                'Czołg podstawowy':'主战坦克',
-                'BMP — działko automatyczne + ATGM':'BMP — 机炮 + 反坦克导弹',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 毫米自行榴弹炮'
-            },
-            ja: {
-                'Nick Gracza':'プレイヤー名',
-                'Wybór Mapy':'マップ選択',
-                'Pora Dnia':'時間帯',
-                'Sterowanie':'操作',
-                'Pojazd':'車両',
-                'SINGLEPLAYER':'シングルプレイヤー',
-                'MULTIPLAYER':'マルチプレイヤー',
-                'Boty AI — ustawienia':'AIボット — 設定',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'夜間モード（全マップが夜、ヘッドライトと月）',
-                'Automatyczne (wykryj urządzenie)':'自動（デバイスを検出）',
-                'Dotykowe (telefon / tablet)':'タッチ（スマホ / タブレット）',
-                'Klawiatura + mysz (komputer)':'キーボード + マウス（PC）',
-                'Czołg podstawowy':'主力戦車',
-                'BMP — działko automatyczne + ATGM':'BMP — 機関砲 + 対戦車ミサイル',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155mm自走榴弾砲'
-            },
-            ko: {
-                'Nick Gracza':'플레이어 이름',
-                'Wybór Mapy':'맵 선택',
-                'Pora Dnia':'시간대',
-                'Sterowanie':'조작',
-                'Pojazd':'차량',
-                'SINGLEPLAYER':'싱글플레이어',
-                'MULTIPLAYER':'멀티플레이어',
-                'Boty AI — ustawienia':'AI 봇 — 설정',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'야간 모드(모든 맵이 밤, 전조등과 달)',
-                'Automatyczne (wykryj urządzenie)':'자동(기기 감지)',
-                'Dotykowe (telefon / tablet)':'터치(휴대폰 / 태블릿)',
-                'Klawiatura + mysz (komputer)':'키보드 + 마우스(PC)',
-                'Czołg podstawowy':'주력 전차',
-                'BMP — działko automatyczne + ATGM':'BMP — 기관포 + 대전차 미사일',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155mm 자주곡사포'
-            },
-            ar: {
-                'Nick Gracza':'اسم اللاعب',
-                'Wybór Mapy':'اختيار الخريطة',
-                'Pora Dnia':'وقت اليوم',
-                'Sterowanie':'التحكم',
-                'Pojazd':'المركبة',
-                'SINGLEPLAYER':'لاعب واحد',
-                'MULTIPLAYER':'متعدد اللاعبين',
-                'Boty AI — ustawienia':'روبوتات الذكاء الاصطناعي — الإعدادات',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'الوضع الليلي (كل الخرائط ليلاً، المصابيح والقمر)',
-                'Automatyczne (wykryj urządzenie)':'تلقائي (اكتشاف الجهاز)',
-                'Dotykowe (telefon / tablet)':'لمس (هاتف / جهاز لوحي)',
-                'Klawiatura + mysz (komputer)':'لوحة مفاتيح + ماوس (كمبيوتر)',
-                'Czołg podstawowy':'دبابة قتال رئيسية',
-                'BMP — działko automatyczne + ATGM':'BMP — مدفع آلي + صواريخ مضادة للدبابات',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — هاون ذاتي الحركة عيار 155 ملم'
-            },
-            hi: {
-                'Nick Gracza':'खिलाड़ी का नाम',
-                'Wybór Mapy':'मानचित्र चयन',
-                'Pora Dnia':'दिन का समय',
-                'Sterowanie':'नियंत्रण',
-                'Pojazd':'वाहन',
-                'SINGLEPLAYER':'एकल खिलाड़ी',
-                'MULTIPLAYER':'मल्टीप्लेयर',
-                'Boty AI — ustawienia':'AI बॉट — सेटिंग्स',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'रात्रि मोड (सभी मानचित्र रात में, हेडलाइट और चंद्रमा)',
-                'Automatyczne (wykryj urządzenie)':'स्वचालित (डिवाइस पहचानें)',
-                'Dotykowe (telefon / tablet)':'टच (फोन / टैबलेट)',
-                'Klawiatura + mysz (komputer)':'कीबोर्ड + माउस (पीसी)',
-                'Czołg podstawowy':'मुख्य युद्ध टैंक',
-                'BMP — działko automatyczne + ATGM':'BMP — स्वचालित तोप + एंटी-टैंक मिसाइल',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 मिमी स्वचालित हॉवित्ज़र'
-            },
-            tr: {
-                'Nick Gracza':'Oyuncu adı',
-                'Wybór Mapy':'Harita seçimi',
-                'Pora Dnia':'Günün zamanı',
-                'Sterowanie':'Kontroller',
-                'Pojazd':'Araç',
-                'SINGLEPLAYER':'TEK OYUNCU',
-                'MULTIPLAYER':'ÇOK OYUNCULU',
-                'Boty AI — ustawienia':'AI botları — ayarlar',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Gece modu (tüm haritalar gece, farlar ve ay)',
-                'Automatyczne (wykryj urządzenie)':'Otomatik (cihazı algıla)',
-                'Dotykowe (telefon / tablet)':'Dokunmatik (telefon / tablet)',
-                'Klawiatura + mysz (komputer)':'Klavye + fare (PC)',
-                'Czołg podstawowy':'Ana muharebe tankı',
-                'BMP — działko automatyczne + ATGM':'BMP — otomatik top + tanksavar füzesi',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm kundağı motorlu obüs'
-            },
-            nl: {
-                'Nick Gracza':'Spelersnaam',
-                'Wybór Mapy':'Kaartkeuze',
-                'Pora Dnia':'Tijd van de dag',
-                'Sterowanie':'Besturing',
-                'Pojazd':'Voertuig',
-                'SINGLEPLAYER':'ENKELSpeler',
-                'MULTIPLAYER':'MEERspeler',
-                'Boty AI — ustawienia':'AI-bots — instellingen',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Nachtmodus (alle kaarten ’s nachts, koplampen en maan)',
-                'Automatyczne (wykryj urządzenie)':'Automatisch (apparaat detecteren)',
-                'Dotykowe (telefon / tablet)':'Aanraak (telefoon / tablet)',
-                'Klawiatura + mysz (komputer)':'Toetsenbord + muis (pc)',
-                'Czołg podstawowy':'Gevechtstank',
-                'BMP — działko automatyczne + ATGM':'BMP — automatische kanon + ATGM',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm gemechaniseerde houwitser'
-            },
-            sv: {
-                'Nick Gracza':'Spelarnamn',
-                'Wybór Mapy':'Kartval',
-                'Pora Dnia':'Tid på dygnet',
-                'Sterowanie':'Kontroller',
-                'Pojazd':'Fordon',
-                'SINGLEPLAYER':'EN SPELARE',
-                'MULTIPLAYER':'FLERSPELARE',
-                'Boty AI — ustawienia':'AI-botar — inställningar',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Nattläge (alla kartor på natten, strålkastare och måne)',
-                'Automatyczne (wykryj urządzenie)':'Automatiskt (upptäck enhet)',
-                'Dotykowe (telefon / tablet)':'Pekskärm (telefon / surfplatta)',
-                'Klawiatura + mysz (komputer)':'Tangentbord + mus (dator)',
-                'Czołg podstawowy':'Stridsvagn',
-                'BMP — działko automatyczne + ATGM':'BMP — automatkanon + pansarvärnsrobot',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm självgående haubits'
-            },
-            cs: {
-                'Nick Gracza':'Jméno hráče',
-                'Wybór Mapy':'Výběr mapy',
-                'Pora Dnia':'Čas dne',
-                'Sterowanie':'Ovládání',
-                'Pojazd':'Vozidlo',
-                'SINGLEPLAYER':'JEDEN HRÁČ',
-                'MULTIPLAYER':'MULTIPLAYER',
-                'Boty AI — ustawienia':'AI boti — nastavení',
-                'Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Noční režim (všechny mapy v noci, světla a měsíc)',
-                'Automatyczne (wykryj urządzenie)':'Automaticky (rozpoznat zařízení)',
-                'Dotykowe (telefon / tablet)':'Dotykové (telefon / tablet)',
-                'Klawiatura + mysz (komputer)':'Klávesnice + myš (PC)',
-                'Czołg podstawowy':'Hlavní bojový tank',
-                'BMP — działko automatyczne + ATGM':'BMP — automatický kanón + PTŘS',
-                'M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — samohybná houfnice 155 mm'
-            }
+            de: {'Nick Gracza':'Spielername','Wybór Mapy':'Kartenauswahl','Pora Dnia':'Tageszeit','Sterowanie':'Steuerung','Pojazd':'Fahrzeug','SINGLEPLAYER':'EINZELSPIELER','MULTIPLAYER':'MEHRSPIELER','Boty AI — ustawienia':'KI-Bots — Einstellungen','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Nachtmodus (alle Karten bei Nacht, Scheinwerfer und Mond)','Automatyczne (wykryj urządzenie)':'Automatisch (Gerät erkennen)','Dotykowe (telefon / tablet)':'Touch (Handy / Tablet)','Klawiatura + mysz (komputer)':'Tastatur + Maus (PC)','Czołg podstawowy':'Kampfpanzer','BMP — działko automatyczne + ATGM':'BMP — Maschinenkanone + Panzerabwehrrakete','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155-mm-Panzerhaubitze'},
+            fr: {'Nick Gracza':'Nom du joueur','Wybór Mapy':'Choix de la carte','Pora Dnia':'Moment de la journée','Sterowanie':'Commandes','Pojazd':'Véhicule','SINGLEPLAYER':'SOLO','MULTIPLAYER':'MULTIJOUEUR','Boty AI — ustawienia':'Bots IA — réglages','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Mode nuit (toutes les cartes de nuit, phares et lune)','Automatyczne (wykryj urządzenie)':'Automatique (détecter l’appareil)','Dotykowe (telefon / tablet)':'Tactile (téléphone / tablette)','Klawiatura + mysz (komputer)':'Clavier + souris (PC)','Czołg podstawowy':'Char de combat principal','BMP — działko automatyczne + ATGM':'BMP — canon automatique + ATGM','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obusier automoteur de 155 mm'},
+            es: {'Nick Gracza':'Nombre del jugador','Wybór Mapy':'Selección de mapa','Pora Dnia':'Hora del día','Sterowanie':'Controles','Pojazd':'Vehículo','SINGLEPLAYER':'UN JUGADOR','MULTIPLAYER':'MULTIJUGADOR','Boty AI — ustawienia':'Bots de IA — ajustes','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Modo nocturno (todos los mapas de noche, faros y luna)','Automatyczne (wykryj urządzenie)':'Automático (detectar dispositivo)','Dotykowe (telefon / tablet)':'Táctil (teléfono / tablet)','Klawiatura + mysz (komputer)':'Teclado + ratón (PC)','Czołg podstawowy':'Carro de combate principal','BMP — działko automatyczne + ATGM':'BMP — cañón automático + ATGM','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obús autopropulsado de 155 mm'},
+            it: {'Nick Gracza':'Nome giocatore','Wybór Mapy':'Selezione mappa','Pora Dnia':'Momento della giornata','Sterowanie':'Comandi','Pojazd':'Veicolo','SINGLEPLAYER':'GIOCATORE SINGOLO','MULTIPLAYER':'MULTIGIOCATORE','Boty AI — ustawienia':'Bot IA — impostazioni','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Modalità notturna (tutte le mappe di notte, fari e luna)','Automatyczne (wykryj urządzenie)':'Automatico (rileva dispositivo)','Dotykowe (telefon / tablet)':'Touch (telefono / tablet)','Klawiatura + mysz (komputer)':'Tastiera + mouse (PC)','Czołg podstawowy':'Carro armato principale','BMP — działko automatyczne + ATGM':'BMP — cannone automatico + ATGM','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obice semovente da 155 mm'},
+            pt: {'Nick Gracza':'Nome do jogador','Wybór Mapy':'Seleção de mapa','Pora Dnia':'Hora do dia','Sterowanie':'Controles','Pojazd':'Veículo','SINGLEPLAYER':'UM JOGADOR','MULTIPLAYER':'MULTIJOGADOR','Boty AI — ustawienia':'Bots de IA — configurações','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Modo noturno (todos os mapas à noite, faróis e lua)','Automatyczne (wykryj urządzenie)':'Automático (detetar dispositivo)','Dotykowe (telefon / tablet)':'Toque (telemóvel / tablet)','Klawiatura + mysz (komputer)':'Teclado + rato (PC)','Czołg podstawowy':'Carro de combate principal','BMP — działko automatyczne + ATGM':'BMP — canhão automático + ATGM','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — obus autopropulsado de 155 mm'},
+            ru: {'Nick Gracza':'Имя игрока','Wybór Mapy':'Выбор карты','Pora Dnia':'Время суток','Sterowanie':'Управление','Pojazd':'Техника','SINGLEPLAYER':'ОДИНОЧНАЯ ИГРА','MULTIPLAYER':'МУЛЬТИПЛЕЕР','Boty AI — ustawienia':'ИИ-боты — настройки','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Ночной режим (все карты ночью, фары и луна)','Automatyczne (wykryj urządzenie)':'Автоматически (определить устройство)','Dotykowe (telefon / tablet)':'Сенсорное (телефон / планшет)','Klawiatura + mysz (komputer)':'Клавиатура + мышь (ПК)','Czołg podstawowy':'Основной боевой танк','BMP — działko automatyczne + ATGM':'БМП — автопушка + ПТУР','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155-мм самоходная гаубица'},
+            uk: {'Nick Gracza':'Ім’я гравця','Wybór Mapy':'Вибір карти','Pora Dnia':'Час доби','Sterowanie':'Керування','Pojazd':'Техніка','SINGLEPLAYER':'ОДНОКОРИСТУВАЦЬКА','MULTIPLAYER':'МУЛЬТИПЛЕЄР','Boty AI — ustawienia':'ШІ-боти — налаштування','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Нічний режим (усі мапи вночі, фари та місяць)','Automatyczne (wykryj urządzenie)':'Автоматично (визначити пристрій)','Dotykowe (telefon / tablet)':'Сенсорне (телефон / планшет)','Klawiatura + mysz (komputer)':'Клавіатура + миша (ПК)','Czołg podstawowy':'Основний бойовий танк','BMP — działko automatyczne + ATGM':'БМП — автоматична гармата + ПТКР','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155-мм самохідна гаубиця'},
+            zh: {'Nick Gracza':'玩家名称','Wybór Mapy':'地图选择','Pora Dnia':'时间','Sterowanie':'控制','Pojazd':'载具','SINGLEPLAYER':'单人游戏','MULTIPLAYER':'多人游戏','Boty AI — ustawienia':'AI 机器人 — 设置','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'夜间模式（所有地图为夜晚，车灯和月亮）','Automatyczne (wykryj urządzenie)':'自动（检测设备）','Dotykowe (telefon / tablet)':'触屏（手机 / 平板）','Klawiatura + mysz (komputer)':'键盘 + 鼠标（电脑）','Czołg podstawowy':'主战坦克','BMP — działko automatyczne + ATGM':'BMP — 机炮 + 反坦克导弹','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 毫米自行榴弹炮'},
+            ja: {'Nick Gracza':'プレイヤー名','Wybór Mapy':'マップ選択','Pora Dnia':'時間帯','Sterowanie':'操作','Pojazd':'車両','SINGLEPLAYER':'シングルプレイヤー','MULTIPLAYER':'マルチプレイヤー','Boty AI — ustawienia':'AIボット — 設定','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'夜間モード（全マップが夜、ヘッドライトと月）','Automatyczne (wykryj urządzenie)':'自動（デバイスを検出）','Dotykowe (telefon / tablet)':'タッチ（スマホ / タブレット）','Klawiatura + mysz (komputer)':'キーボード + マウス（PC）','Czołg podstawowy':'主力戦車','BMP — działko automatyczne + ATGM':'BMP — 機関砲 + 対戦車ミサイル','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155mm自走榴弾砲'},
+            ko: {'Nick Gracza':'플레이어 이름','Wybór Mapy':'맵 선택','Pora Dnia':'시간대','Sterowanie':'조작','Pojazd':'차량','SINGLEPLAYER':'싱글플레이어','MULTIPLAYER':'멀티플레이어','Boty AI — ustawienia':'AI 봇 — 설정','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'야간 모드(모든 맵이 밤, 전조등과 달)','Automatyczne (wykryj urządzenie)':'자동(기기 감지)','Dotykowe (telefon / tablet)':'터치(휴대폰 / 태블릿)','Klawiatura + mysz (komputer)':'키보드 + 마우스(PC)','Czołg podstawowy':'주력 전차','BMP — działko automatyczne + ATGM':'BMP — 기관포 + 대전차 미사일','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155mm 자주곡사포'},
+            ar: {'Nick Gracza':'اسم اللاعب','Wybór Mapy':'اختيار الخريطة','Pora Dnia':'وقت اليوم','Sterowanie':'التحكم','Pojazd':'المركبة','SINGLEPLAYER':'لاعب واحد','MULTIPLAYER':'متعدد اللاعبين','Boty AI — ustawienia':'روبوتات الذكاء الاصطناعي — الإعدادات','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'الوضع الليلي (كل الخرائط ليلاً، المصابيح والقمر)','Automatyczne (wykryj urządzenie)':'تلقائي (اكتشاف الجهاز)','Dotykowe (telefon / tablet)':'لمس (هاتف / جهاز لوحي)','Klawiatura + mysz (komputer)':'لوحة مفاتيح + ماوس (كمبيوتر)','Czołg podstawowy':'دبابة قتال رئيسية','BMP — działko automatyczne + ATGM':'BMP — مدفع آلي + صواريخ مضادة للدبابات','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — هاون ذاتي الحركة عيار 155 ملم'},
+            hi: {'Nick Gracza':'खिलाड़ी का नाम','Wybór Mapy':'मानचित्र चयन','Pora Dnia':'दिन का समय','Sterowanie':'नियंत्रण','Pojazd':'वाहन','SINGLEPLAYER':'एकल खिलाड़ी','MULTIPLAYER':'मल्टीप्लेयर','Boty AI — ustawienia':'AI बॉट — सेटिंग्स','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'रात्रि मोड (सभी मानचित्र रात में, हेडलाइट और चंद्रमा)','Automatyczne (wykryj urządzenie)':'स्वचालित (डिवाइस पहचानें)','Dotykowe (telefon / tablet)':'टच (फोन / टैबलेट)','Klawiatura + mysz (komputer)':'कीबोर्ड + माउस (पीसी)','Czołg podstawowy':'मुख्य युद्ध टैंक','BMP — działko automatyczne + ATGM':'BMP — स्वचालित तोप + एंटी-टैंक मिसाइल','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 मिमी स्वचालित हॉवित्ज़र'},
+            tr: {'Nick Gracza':'Oyuncu adı','Wybór Mapy':'Harita seçimi','Pora Dnia':'Günün zamanı','Sterowanie':'Kontroller','Pojazd':'Araç','SINGLEPLAYER':'TEK OYUNCU','MULTIPLAYER':'ÇOK OYUNCULU','Boty AI — ustawienia':'AI botları — ayarlar','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Gece modu (tüm haritalar gece, farlar ve ay)','Automatyczne (wykryj urządzenie)':'Otomatik (cihazı algıla)','Dotykowe (telefon / tablet)':'Dokunmatik (telefon / tablet)','Klawiatura + mysz (komputer)':'Klavye + fare (PC)','Czołg podstawowy':'Ana muharebe tankı','BMP — działko automatyczne + ATGM':'BMP — otomatik top + tanksavar füzesi','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm kundağı motorlu obüs'},
+            nl: {'Nick Gracza':'Spelersnaam','Wybór Mapy':'Kaartkeuze','Pora Dnia':'Tijd van de dag','Sterowanie':'Besturing','Pojazd':'Voertuig','SINGLEPLAYER':'ENKELSpeler','MULTIPLAYER':'MEERspeler','Boty AI — ustawienia':'AI-bots — instellingen','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Nachtmodus (alle kaarten ’s nachts, koplampen en maan)','Automatyczne (wykryj urządzenie)':'Automatisch (apparaat detecteren)','Dotykowe (telefon / tablet)':'Aanraak (telefoon / tablet)','Klawiatura + mysz (komputer)':'Toetsenbord + muis (pc)','Czołg podstawowy':'Gevechtstank','BMP — działko automatyczne + ATGM':'BMP — automatische kanon + ATGM','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm gemechaniseerde houwitser'},
+            sv: {'Nick Gracza':'Spelarnamn','Wybór Mapy':'Kartval','Pora Dnia':'Tid på dygnet','Sterowanie':'Kontroller','Pojazd':'Fordon','SINGLEPLAYER':'EN SPELARE','MULTIPLAYER':'FLERSPELARE','Boty AI — ustawienia':'AI-botar — inställningar','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Nattläge (alla kartor på natten, strålkastare och måne)','Automatyczne (wykryj urządzenie)':'Automatiskt (upptäck enhet)','Dotykowe (telefon / tablet)':'Pekskärm (telefon / surfplatta)','Klawiatura + mysz (komputer)':'Tangentbord + mus (dator)','Czołg podstawowy':'Stridsvagn','BMP — działko automatyczne + ATGM':'BMP — automatkanon + pansarvärnsrobot','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — 155 mm självgående haubits'},
+            cs: {'Nick Gracza':'Jméno hráče','Wybór Mapy':'Výběr mapy','Pora Dnia':'Čas dne','Sterowanie':'Ovládání','Pojazd':'Vozidlo','SINGLEPLAYER':'JEDEN HRÁČ','MULTIPLAYER':'MULTIPLAYER','Boty AI — ustawienia':'AI boti — nastavení','Tryb nocny (wszystkie mapy w nocy, reflektory i księżyc)':'Noční režim (všechny mapy v noci, světla a měsíc)','Automatyczne (wykryj urządzenie)':'Automaticky (rozpoznat zařízení)','Dotykowe (telefon / tablet)':'Dotykové (telefon / tablet)','Klawiatura + mysz (komputer)':'Klávesnice + myš (PC)','Czołg podstawowy':'Hlavní bojový tank','BMP — działko automatyczne + ATGM':'BMP — automatický kanón + PTŘS','M109 Paladin — haubica samobieżna 155 mm':'M109 Paladin — samohybná houfnice 155 mm'}
         };
 
         function applyLanguage(lang) {
@@ -5426,9 +5170,7 @@ function animate() {
             let node;
             while ((node = walker.nextNode())) {
                 const key = node.textContent.trim();
-                if (dict[key]) {
-                    node.textContent = dict[key];
-                }
+                if (dict[key]) node.textContent = dict[key];
             }
             document.documentElement.lang = lang;
         }
